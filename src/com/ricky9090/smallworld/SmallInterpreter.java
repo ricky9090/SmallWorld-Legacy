@@ -283,10 +283,11 @@ public class SmallInterpreter {
 
     // create a new small integer
     SmallInt newInteger(int val) {
-        if ((val >= 0) && (val < 10))
+        if ((val >= 0) && (val < 10)) {
             return smallInts[val];
-        else
+        } else {
             return new SmallInt(IntegerClass, val);
+        }
     }
 
     private SmallObject methodLookup(SmallObject receiver,
@@ -383,28 +384,33 @@ public class SmallInterpreter {
                 switch (high) {
 
                     case 1: // PushInstance
-                        if (arguments == null)
+                        if (arguments == null) {
                             arguments = contextData[1];
-                        if (instanceVariables == null)
+                        }
+                        if (instanceVariables == null) {
                             instanceVariables = arguments.data[0].data;
+                        }
                         stack[stackTop++] = instanceVariables[low];
                         break;
 
                     case 2: // PushArgument
-                        if (arguments == null)
+                        if (arguments == null) {
                             arguments = contextData[1];
+                        }
                         stack[stackTop++] = arguments.data[low];
                         break;
 
                     case 3: // PushTemporary
-                        if (temporaries == null)
+                        if (temporaries == null) {
                             temporaries = contextData[2].data;
+                        }
                         stack[stackTop++] = temporaries[low];
                         break;
 
                     case 4: // PushLiteral
-                        if (literals == null)
+                        if (literals == null) {
                             literals = method.data[2].data;
+                        }
                         stack[stackTop++] = literals[low];
                         break;
 
@@ -457,33 +463,39 @@ public class SmallInterpreter {
                         break;
 
                     case 14: // PushClassVariable
-                        if (arguments == null)
+                        if (arguments == null) {
                             arguments = contextData[1];
-                        if (instanceVariables == null)
+                        }
+                        if (instanceVariables == null) {
                             instanceVariables = arguments.data[0].data;
+                        }
                         stack[stackTop++] = arguments.data[0].objClass.data[low + 5];
                         break;
 
                     case 6: // AssignInstance
-                        if (arguments == null)
+                        if (arguments == null) {
                             arguments = contextData[1];
-                        if (instanceVariables == null)
+                        }
+                        if (instanceVariables == null) {
                             instanceVariables = arguments.data[0].data;
+                        }
                         // leave result on stack
                         instanceVariables[low] = stack[stackTop - 1];
                         break;
 
                     case 7: // AssignTemporary
-                        if (temporaries == null)
+                        if (temporaries == null) {
                             temporaries = contextData[2].data;
+                        }
                         temporaries[low] = stack[stackTop - 1];
                         break;
 
                     case 8: // MarkArguments
                         SmallObject newArguments = new SmallObject(ArrayClass, low);
                         tempa = newArguments.data; // direct access to array
-                        while (low > 0)
+                        while (low > 0) {
                             tempa[--low] = stack[--stackTop];
+                        }
                         stack[stackTop++] = newArguments;
                         break;
 
@@ -496,8 +508,9 @@ public class SmallInterpreter {
                         //contextData[4] = newInteger(bytePointer);
                         contextData[4] = (bytePointer < 10) ? smallInts[bytePointer] : new SmallInt(IntegerClass, bytePointer);
                         // now build new context
-                        if (literals == null)
+                        if (literals == null) {
                             literals = method.data[2].data;
+                        }
                         returnedValue = literals[low]; // message selector
                         // System.out.println("Sending " + returnedValue);
                         // System.out.println("Arguments " + arguments);
@@ -528,8 +541,9 @@ public class SmallInterpreter {
                         } else if (low == 1) { // notNil
                             SmallObject arg = stack[--stackTop];
                             stack[stackTop++] = (arg != nilObject) ? trueObject : falseObject;
-                        } else
+                        } else {
                             throw new SmallException("Illegal SendUnary " + low, context);
+                        }
                         break;
 
                     case 11: {// SendBinary
@@ -555,7 +569,9 @@ public class SmallInterpreter {
                             if (done) {
                                 stack[stackTop++] = returnedValue;
                                 break;
-                            } else stackTop += 2; // overflow, send message
+                            } else {
+                                stackTop += 2; // overflow, send message
+                            }
                         }
                         // non optimized binary message
                         arguments = new SmallObject(ArrayClass, 2);
@@ -587,9 +603,11 @@ public class SmallInterpreter {
 
                             case 1: // object identity
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue == stack[--stackTop])
+                                if (returnedValue == stack[--stackTop]) {
                                     returnedValue = trueObject;
-                                else returnedValue = falseObject;
+                                } else {
+                                    returnedValue = falseObject;
+                                }
                                 break;
 
                             case 2: // object class
@@ -598,10 +616,11 @@ public class SmallInterpreter {
 
                             case 4: // object size
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue instanceof SmallByteArray)
+                                if (returnedValue instanceof SmallByteArray) {
                                     low = ((SmallByteArray) returnedValue).values.length;
-                                else
+                                } else {
                                     low = returnedValue.data.length;
+                                }
                                 returnedValue = newInteger(low);
                                 break;
 
@@ -618,8 +637,9 @@ public class SmallInterpreter {
                             case 7: // new object allocation
                                 low = ((SmallInt) stack[--stackTop]).value;
                                 returnedValue = new SmallObject(stack[--stackTop], low);
-                                while (low > 0)
+                                while (low > 0) {
                                     returnedValue.data[--low] = nilObject;
+                                }
                                 break;
 
                             case 8: { // block invocation
@@ -635,8 +655,9 @@ public class SmallInterpreter {
                                 contextData[5] = newInteger(stackTop);
                                 contextData[4] = newInteger(bytePointer);
                                 SmallObject newContext = new SmallObject(ContextClass, 10);
-                                for (int i = 0; i < 10; i++)
+                                for (int i = 0; i < 10; i++) {
                                     newContext.data[i] = returnedValue.data[i];
+                                }
                                 newContext.data[6] = contextData[6];
                                 newContext.data[5] = smallInts[0]; // stack top
                                 newContext.data[4] = returnedValue.data[9]; // starting addr
@@ -752,10 +773,12 @@ public class SmallInterpreter {
                                 low = a.values.length + b.values.length;
                                 SmallByteArray n = new SmallByteArray(a.objClass, low);
                                 high = 0;
-                                for (int i = 0; i < a.values.length; i++)
+                                for (int i = 0; i < a.values.length; i++) {
                                     n.values[high++] = a.values[i];
-                                for (int i = 0; i < b.values.length; i++)
+                                }
+                                for (int i = 0; i < b.values.length; i++) {
                                     n.values[high++] = b.values[i];
+                                }
                                 returnedValue = n;
                             }
                             break;
@@ -775,9 +798,13 @@ public class SmallInterpreter {
                                         r = -1;
                                         break;
                                     }
-                                if (r == 0)
-                                    if (low < high) r = 1;
-                                    else if (low > high) r = -1;
+                                if (r == 0) {
+                                    if (low < high) {
+                                        r = 1;
+                                    } else if (low > high) {
+                                        r = -1;
+                                    }
+                                }
                                 returnedValue = newInteger(r);
                             }
                             break;
@@ -805,8 +832,9 @@ public class SmallInterpreter {
                                 SmallObject oldar = stack[--stackTop];
                                 low = oldar.data.length;
                                 returnedValue = new SmallObject(oldar.objClass, low + 1);
-                                for (int i = 0; i < low; i++)
+                                for (int i = 0; i < low; i++) {
                                     returnedValue.data[i] = oldar.data[i];
+                                }
                                 returnedValue.data[low] = stack[--stackTop];
                             }
                             break;
@@ -815,8 +843,9 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
                                 low = returnedValue.data.length;
                                 SmallObject na[] = new SmallObject[low + 1];
-                                for (int i = 0; i < low; i++)
+                                for (int i = 0; i < low; i++) {
                                     na[i] = returnedValue.data[i];
+                                }
                                 na[low] = stack[--stackTop];
                                 returnedValue.data = na;
                             }
@@ -832,8 +861,12 @@ public class SmallInterpreter {
                             break;
 
                             case 34: { // thread kill
-                                if (parentThread != null) parentThread.stop();
-                                if (myThread != null) myThread.stop();
+                                if (parentThread != null) {
+                                    parentThread.stop();
+                                }
+                                if (myThread != null) {
+                                    myThread.stop();
+                                }
                                 System.out.println("is there life after death?");
                             }
                             break;
@@ -844,8 +877,9 @@ public class SmallInterpreter {
 
                             case 36:  // fast array creation
                                 returnedValue = new SmallObject(ArrayClass, low);
-                                for (int i = low - 1; i >= 0; i--)
+                                for (int i = low - 1; i >= 0; i--) {
                                     returnedValue.data[i] = stack[--stackTop];
+                                }
                                 break;
 
                             case 41: {// open file for output
@@ -889,8 +923,9 @@ public class SmallInterpreter {
                                     if (line == null) {
                                         --stackTop;
                                         returnedValue = nilObject;
-                                    } else
+                                    } else {
                                         returnedValue = new SmallByteArray(stack[--stackTop], line);
+                                    }
                                 } catch (EOFException e) {
                                     returnedValue = nilObject;
                                 } catch (IOException f) {
@@ -972,10 +1007,11 @@ public class SmallInterpreter {
                             case 61: { // show/hide text window
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject jo = (SmallJavaObject) stack[--stackTop];
-                                if (returnedValue == trueObject)
+                                if (returnedValue == trueObject) {
                                     ((JDialog) jo.value).setVisible(true);
-                                else
+                                } else {
                                     ((JDialog) jo.value).setVisible(false);
+                                }
                             }
                             break;
 
@@ -1056,8 +1092,9 @@ public class SmallInterpreter {
                                 high = ((SmallInt) stack[--stackTop]).value;
                                 JPanel jp = new JPanel();
                                 jp.setLayout(new GridLayout(low, high));
-                                for (int i = 0; i < data.data.length; i++)
+                                for (int i = 0; i < data.data.length; i++) {
                                     jp.add((Component) ((SmallJavaObject) data.data[i]).value);
+                                }
                                 returnedValue = new SmallJavaObject(stack[--stackTop], jp);
                             }
                             break;
@@ -1085,20 +1122,25 @@ public class SmallInterpreter {
                                 JPanel jp = new JPanel();
                                 jp.setLayout(new BorderLayout());
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue != nilObject)
+                                if (returnedValue != nilObject) {
                                     jp.add("Center", (Component) ((SmallJavaObject) returnedValue).value);
+                                }
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue != nilObject)
+                                if (returnedValue != nilObject) {
                                     jp.add("West", (Component) ((SmallJavaObject) returnedValue).value);
+                                }
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue != nilObject)
+                                if (returnedValue != nilObject) {
                                     jp.add("East", (Component) ((SmallJavaObject) returnedValue).value);
+                                }
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue != nilObject)
+                                if (returnedValue != nilObject) {
                                     jp.add("South", (Component) ((SmallJavaObject) returnedValue).value);
+                                }
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue != nilObject)
+                                if (returnedValue != nilObject) {
                                     jp.add("North", (Component) ((SmallJavaObject) returnedValue).value);
+                                }
                                 returnedValue = new SmallJavaObject(stack[--stackTop], jp);
                             }
                             break;
@@ -1107,8 +1149,9 @@ public class SmallInterpreter {
                                 SmallJavaObject img = (SmallJavaObject) stack[--stackTop];
                                 SmallJavaObject lab = (SmallJavaObject) stack[--stackTop];
                                 Object jo = lab.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
+                                }
                                 if (jo instanceof JLabel) {
                                     JLabel jlb = (JLabel) jo;
                                     jlb.setIcon(new ImageIcon((Image) img.value));
@@ -1130,12 +1173,14 @@ public class SmallInterpreter {
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop]; // class
                                 Object jo = jt.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
-                                if (jo instanceof JTextComponent)
-
+                                }
+                                if (jo instanceof JTextComponent) {
                                     returnedValue = new SmallByteArray(returnedValue, ((JTextComponent) jo).getText());
-                                else returnedValue = new SmallByteArray(returnedValue, "");
+                                } else {
+                                    returnedValue = new SmallByteArray(returnedValue, "");
+                                }
                             }
                             break;
 
@@ -1143,12 +1188,14 @@ public class SmallInterpreter {
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop]; // class
                                 Object jo = jt.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
-                                if (jo instanceof JTextComponent)
-
+                                }
+                                if (jo instanceof JTextComponent) {
                                     returnedValue = new SmallByteArray(returnedValue, ((JTextComponent) jo).getSelectedText());
-                                else returnedValue = new SmallByteArray(returnedValue, "");
+                                } else {
+                                    returnedValue = new SmallByteArray(returnedValue, "");
+                                }
                             }
                             break;
 
@@ -1156,23 +1203,28 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];// text
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
                                 Object jo = jt.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
-                                if (jo instanceof JTextComponent)
+                                }
+                                if (jo instanceof JTextComponent) {
                                     ((JTextComponent) jo).setText(returnedValue.toString());
+                                }
                             }
                             break;
 
                             case 83: { // get selected index
                                 SmallJavaObject jo = (SmallJavaObject) stack[--stackTop];
                                 Object jl = jo.value;
-                                if (jl instanceof JScrollPane)
+                                if (jl instanceof JScrollPane) {
                                     jl = ((JScrollPane) jl).getViewport().getView();
-                                if (jl instanceof JList)
+                                }
+                                if (jl instanceof JList) {
                                     returnedValue = newInteger(((JList) jl).getSelectedIndex() + 1);
-                                else if (jl instanceof JScrollBar)
+                                } else if (jl instanceof JScrollBar) {
                                     returnedValue = newInteger(((JScrollBar) jl).getValue());
-                                else returnedValue = newInteger(0);
+                                } else {
+                                    returnedValue = newInteger(0);
+                                }
                             }
                             break;
 
@@ -1181,8 +1233,9 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject jo = (SmallJavaObject) returnedValue;
                                 Object jl = jo.value;
-                                if (jl instanceof JScrollPane)
+                                if (jl instanceof JScrollPane) {
                                     jl = ((JScrollPane) jl).getViewport().getView();
+                                }
                                 if (jl instanceof JList) {
                                     ((JList) jl).setListData(data.data);
                                     ((JList) jl).repaint();
@@ -1199,12 +1252,13 @@ public class SmallInterpreter {
                                         ((orient == trueObject) ? JScrollBar.VERTICAL : JScrollBar.HORIZONTAL),
                                         min, 10, min, max);
                                 returnedValue = new SmallJavaObject(stack[--stackTop], bar);
-                                if (action != nilObject)
+                                if (action != nilObject) {
                                     bar.addAdjustmentListener(new AdjustmentListener() {
                                         public void adjustmentValueChanged(AdjustmentEvent ae) {
                                             new ActionThread(action, myThread, ae.getValue()).start();
                                         }
                                     });
+                                }
                             }
                             break;
 
@@ -1212,8 +1266,9 @@ public class SmallInterpreter {
                                 final SmallObject action = stack[--stackTop];
                                 SmallJavaObject pan = (SmallJavaObject) stack[--stackTop];
                                 Object jo = pan.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = (JComponent) ((JScrollPane) jo).getViewport().getView();
+                                }
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseListener(new MouseAdapter() {
                                     public void mousePressed(MouseEvent e) {
@@ -1227,8 +1282,9 @@ public class SmallInterpreter {
                                 final SmallObject action = stack[--stackTop];
                                 SmallJavaObject pan = (SmallJavaObject) stack[--stackTop];
                                 Object jo = pan.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = (JComponent) ((JScrollPane) jo).getViewport().getView();
+                                }
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseListener(new MouseAdapter() {
                                     public void mouseReleased(MouseEvent e) {
@@ -1242,8 +1298,9 @@ public class SmallInterpreter {
                                 final SmallObject action = stack[--stackTop];
                                 SmallJavaObject pan = (SmallJavaObject) stack[--stackTop];
                                 Object jo = pan.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = (JComponent) ((JScrollPane) jo).getViewport().getView();
+                                }
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseMotionListener(new MouseMotionAdapter() {
                                     public void mouseDragged(MouseEvent e) {
@@ -1261,10 +1318,12 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];// text
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
                                 Object jo = jt.value;
-                                if (jo instanceof JScrollPane)
+                                if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
-                                if (jo instanceof JTextComponent)
+                                }
+                                if (jo instanceof JTextComponent) {
                                     ((JTextComponent) jo).replaceSelection(returnedValue.toString());
+                                }
                             }
                             break;
 
@@ -1409,8 +1468,9 @@ public class SmallInterpreter {
                     case 15: // Do Special
                         switch (low) {
                             case 1: // self return
-                                if (arguments == null)
+                                if (arguments == null) {
                                     arguments = contextData[1];
+                                }
                                 returnedValue = arguments.data[0];
                                 context = contextData[6]; // previous context
                                 break innerLoop;
@@ -1443,15 +1503,17 @@ public class SmallInterpreter {
                             case 7: // branch if true
                                 low = (int) code[bytePointer++] & 0x0FF;
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue == trueObject)
+                                if (returnedValue == trueObject) {
                                     bytePointer = low;
+                                }
                                 break;
 
                             case 8: // branch if false
                                 low = (int) code[bytePointer++] & 0x0FF;
                                 returnedValue = stack[--stackTop];
-                                if (returnedValue == falseObject)
+                                if (returnedValue == falseObject) {
                                     bytePointer = low;
+                                }
                                 break;
 
                             case 11: // send to super
@@ -1462,10 +1524,12 @@ public class SmallInterpreter {
                                 contextData[5] = newInteger(stackTop);
                                 contextData[4] = newInteger(bytePointer);
                                 // now build new context
-                                if (literals == null)
+                                if (literals == null) {
                                     literals = method.data[2].data;
-                                if (method == null)
+                                }
+                                if (method == null) {
                                     method = context.data[0];
+                                }
                                 method = method.data[5]; // class in method
                                 method = method.data[1]; // parent in class
                                 method = methodLookup(method, (SmallByteArray) literals[low], context, arguments);
@@ -1501,15 +1565,17 @@ public class SmallInterpreter {
         public ActionThread(SmallObject block, Thread myT) {
             myThread = myT;
             action = new SmallObject(ContextClass, 10);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 10; i++) {
                 action.data[i] = block.data[i];
+            }
         }
 
         public ActionThread(SmallObject block, Thread myT, int v1) {
             myThread = myT;
             action = new SmallObject(ContextClass, 10);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 10; i++) {
                 action.data[i] = block.data[i];
+            }
             int argLoc = ((SmallInt) action.data[7]).value;
             action.data[2].data[argLoc] = newInteger(v1);
         }
@@ -1517,8 +1583,9 @@ public class SmallInterpreter {
         public ActionThread(SmallObject block, Thread myT, int v1, int v2) {
             myThread = myT;
             action = new SmallObject(ContextClass, 10);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 10; i++) {
                 action.data[i] = block.data[i];
+            }
             int argLoc = ((SmallInt) action.data[7]).value;
             action.data[2].data[argLoc] = newInteger(v1);
             action.data[2].data[argLoc + 1] = newInteger(v2);
