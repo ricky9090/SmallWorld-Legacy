@@ -18,5 +18,5 @@
   <resources>
     <jar download="eager" href="SmallWorld2007.2.jar" main="false"/>
   </resources>
-  <application-desc main-class="com.russell_allen.smallworld.SmallWorld"/>
+  <application-desc main-class="com.ricky9090.smallworld.SmallWorld"/>
 </jnlp>
