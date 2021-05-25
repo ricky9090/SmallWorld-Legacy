@@ -11,6 +11,7 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.text.JTextComponent;
+import java.util.List;
 import java.util.jar.*;
 import java.util.*;
 
@@ -31,21 +32,24 @@ public class SmallInterpreter {
     // version
     public static final int imageFormatVersion = 1;
 
-    // global constants
+    // --- global constants begin ---
     public SmallObject nilObject;
     public SmallObject trueObject;
     public SmallObject falseObject;
-    public SmallInt[] smallInts;
+
+    public SmallInt[] smallIntCache;
+
     public SmallObject ArrayClass;
     public SmallObject BlockClass;
     public SmallObject ContextClass;
     public SmallObject IntegerClass;
+    // --- global constants end ---
 
     // Load and save image
     public boolean loadImageFromInputStream(InputStream name) {
         try {
-            java.util.List<SmallObject> obj = new ArrayList<SmallObject>();
-            java.util.List<int[]> list = new ArrayList<int[]>();
+            List<SmallObject> objectList = new ArrayList<>();
+            List<int[]> list = new ArrayList<>();
 
             // Read in input into list
             // for each line in list, create smallobject of appropriate class in obj
@@ -64,12 +68,12 @@ public class SmallInterpreter {
                         for (int i = 2; i < si; i++) {
                             qw[i] = r.readInt();
                         }
-                        obj.add(new SmallInt());
-                    } else if ((qw[1] == 0) || (qw[1] == 2)) { //SmallObject
+                        objectList.add(new SmallInt());
+                    } else if (qw[1] == 2) { //SmallObject
                         for (int i = 2; i < si; i++) {
                             qw[i] = r.readInt();
                         }
-                        obj.add(new SmallObject());
+                        objectList.add(new SmallObject());
                     } else if (qw[1] == 1) { // SmallByteArray
                         qw[2] = r.readInt(); // class
                         qw[3] = r.readInt(); // datasize
@@ -79,7 +83,7 @@ public class SmallInterpreter {
                         for (int i = 4 + qw[3]; i < qw[0]; i++) {
                             qw[i] = (int) r.readByte();
                         }
-                        obj.add(new SmallByteArray());
+                        objectList.add(new SmallByteArray());
                     }
                     list.add(qw);
                 }
@@ -90,7 +94,7 @@ public class SmallInterpreter {
             // using list, fill in fields in smallobjects in obj
             int it;
             for (it = 0; it < list.size(); it++) {
-                SmallObject co = obj.get(it);
+                SmallObject co = objectList.get(it);
                 int[] cso = list.get(it);
 
                 // Determine values
@@ -118,10 +122,10 @@ public class SmallInterpreter {
                 }
 
                 // Add values
-                co.objClass = obj.get(objClass);
+                co.objClass = objectList.get(objClass);
                 co.data = new SmallObject[objDataLength];
                 for (int i = 0; i < objDataLength; i++) {
-                    co.data[i] = obj.get(objData[i]);
+                    co.data[i] = objectList.get(objData[i]);
                 }
 
                 if (objType == 0) { // SmallInt
@@ -136,24 +140,24 @@ public class SmallInterpreter {
             System.out.println("Done initialising SmallObjects");
 
             // set up constants
-            nilObject = obj.get(0);
-            trueObject = obj.get(1);
-            falseObject = obj.get(2);
-            ArrayClass = obj.get(3);
-            BlockClass = obj.get(4);
-            ContextClass = obj.get(5);
-            IntegerClass = obj.get(6);
-            smallInts = new SmallInt[10];
-            smallInts[0] = (SmallInt) obj.get(7);
-            smallInts[1] = (SmallInt) obj.get(8);
-            smallInts[2] = (SmallInt) obj.get(9);
-            smallInts[3] = (SmallInt) obj.get(10);
-            smallInts[4] = (SmallInt) obj.get(11);
-            smallInts[5] = (SmallInt) obj.get(12);
-            smallInts[6] = (SmallInt) obj.get(13);
-            smallInts[7] = (SmallInt) obj.get(14);
-            smallInts[8] = (SmallInt) obj.get(15);
-            smallInts[9] = (SmallInt) obj.get(16);
+            nilObject = objectList.get(0);
+            trueObject = objectList.get(1);
+            falseObject = objectList.get(2);
+            ArrayClass = objectList.get(3);
+            BlockClass = objectList.get(4);
+            ContextClass = objectList.get(5);
+            IntegerClass = objectList.get(6);
+            smallIntCache = new SmallInt[10];
+            smallIntCache[0] = (SmallInt) objectList.get(7);
+            smallIntCache[1] = (SmallInt) objectList.get(8);
+            smallIntCache[2] = (SmallInt) objectList.get(9);
+            smallIntCache[3] = (SmallInt) objectList.get(10);
+            smallIntCache[4] = (SmallInt) objectList.get(11);
+            smallIntCache[5] = (SmallInt) objectList.get(12);
+            smallIntCache[6] = (SmallInt) objectList.get(13);
+            smallIntCache[7] = (SmallInt) objectList.get(14);
+            smallIntCache[8] = (SmallInt) objectList.get(15);
+            smallIntCache[9] = (SmallInt) objectList.get(16);
             System.out.println("Done loading system");
 
             return true;
@@ -172,7 +176,7 @@ public class SmallInterpreter {
         set.add(BlockClass);
         set.add(ContextClass);
         set.add(IntegerClass);
-        set.addAll(Arrays.asList(smallInts));
+        set.addAll(Arrays.asList(smallIntCache));
         while (true) {
             java.util.List<SmallObject> newList = new ArrayList<SmallObject>();
             for (SmallObject o : set) {
@@ -284,7 +288,7 @@ public class SmallInterpreter {
     // create a new small integer
     SmallInt newInteger(int val) {
         if ((val >= 0) && (val < 10)) {
-            return smallInts[val];
+            return smallIntCache[val];
         } else {
             return new SmallInt(IntegerClass, val);
         }
@@ -335,8 +339,8 @@ public class SmallInterpreter {
         // allocate stack
         max = ((SmallInt) (method.data[3])).value;
         context.data[3] = new SmallObject(ArrayClass, max);
-        context.data[4] = smallInts[0]; // byte pointer
-        context.data[5] = smallInts[0]; // stacktop
+        context.data[4] = smallIntCache[0]; // byte pointer
+        context.data[5] = smallIntCache[0]; // stacktop
         context.data[6] = oldContext;
         return context;
     }
@@ -362,7 +366,7 @@ public class SmallInterpreter {
             int stackTop = ((SmallInt) contextData[5]).value;
             SmallObject returnedValue = null;
             SmallObject temp;
-            SmallObject[] tempa;
+            SmallObject[] tempArray;
 
             // everything else can be null for now
             SmallObject[] temporaries = null;
@@ -426,7 +430,7 @@ public class SmallInterpreter {
                             case 7:
                             case 8:
                             case 9:
-                                stack[stackTop++] = smallInts[low];
+                                stack[stackTop++] = smallIntCache[low];
                                 break;
                             case 10:
                                 stack[stackTop++] = nilObject;
@@ -447,17 +451,17 @@ public class SmallInterpreter {
                         // next byte is goto value
                         high = (int) code[bytePointer++] & 0x0FF;
                         returnedValue = new SmallObject(BlockClass, 10);
-                        tempa = returnedValue.data;
-                        tempa[0] = contextData[0]; // share method
-                        tempa[1] = contextData[1]; // share arguments
-                        tempa[2] = contextData[2]; // share temporaries
-                        tempa[3] = contextData[3]; // stack (later replaced)
-                        tempa[4] = newInteger(bytePointer); // current byte pointer
-                        tempa[5] = smallInts[0]; // stacktop
-                        tempa[6] = contextData[6]; // previous context
-                        tempa[7] = newInteger(low); // argument location
-                        tempa[8] = context; // creating context
-                        tempa[9] = newInteger(bytePointer); // current byte pointer
+                        tempArray = returnedValue.data;
+                        tempArray[0] = contextData[0]; // share method
+                        tempArray[1] = contextData[1]; // share arguments
+                        tempArray[2] = contextData[2]; // share temporaries
+                        tempArray[3] = contextData[3]; // stack (later replaced)
+                        tempArray[4] = newInteger(bytePointer); // current byte pointer
+                        tempArray[5] = smallIntCache[0]; // stacktop
+                        tempArray[6] = contextData[6]; // previous context
+                        tempArray[7] = newInteger(low); // argument location
+                        tempArray[8] = context; // creating context
+                        tempArray[9] = newInteger(bytePointer); // current byte pointer
                         stack[stackTop++] = returnedValue;
                         bytePointer = high;
                         break;
@@ -492,9 +496,9 @@ public class SmallInterpreter {
 
                     case 8: // MarkArguments
                         SmallObject newArguments = new SmallObject(ArrayClass, low);
-                        tempa = newArguments.data; // direct access to array
+                        tempArray = newArguments.data; // direct access to array
                         while (low > 0) {
-                            tempa[--low] = stack[--stackTop];
+                            tempArray[--low] = stack[--stackTop];
                         }
                         stack[stackTop++] = newArguments;
                         break;
@@ -504,9 +508,9 @@ public class SmallInterpreter {
                         arguments = stack[--stackTop];
                         // expand newInteger in line
                         //contextData[5] = newInteger(stackTop);
-                        contextData[5] = (stackTop < 10) ? smallInts[stackTop] : new SmallInt(IntegerClass, stackTop);
+                        contextData[5] = (stackTop < 10) ? smallIntCache[stackTop] : new SmallInt(IntegerClass, stackTop);
                         //contextData[4] = newInteger(bytePointer);
-                        contextData[4] = (bytePointer < 10) ? smallInts[bytePointer] : new SmallInt(IntegerClass, bytePointer);
+                        contextData[4] = (bytePointer < 10) ? smallIntCache[bytePointer] : new SmallInt(IntegerClass, bytePointer);
                         // now build new context
                         if (literals == null) {
                             literals = method.data[2].data;
@@ -659,7 +663,7 @@ public class SmallInterpreter {
                                     newContext.data[i] = returnedValue.data[i];
                                 }
                                 newContext.data[6] = contextData[6];
-                                newContext.data[5] = smallInts[0]; // stack top
+                                newContext.data[5] = smallIntCache[0]; // stack top
                                 newContext.data[4] = returnedValue.data[9]; // starting addr
                                 low = newContext.data[3].data.length; //stack size
                                 newContext.data[3] = new SmallObject(ArrayClass, low); // new stack
