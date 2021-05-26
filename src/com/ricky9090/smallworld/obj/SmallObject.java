@@ -21,6 +21,14 @@ public class SmallObject {
         return this;
     }
 
+    @Override
+    public String toString() {
+        if (data != null && data.length > 0) {
+            return data[0].toString();
+        }
+        return "SmallObject{" + " ??? " + "}";
+    }
+
     public SmallObject duplicate() {
         SmallObject d = new SmallObject();
         d.objClass = objClass;

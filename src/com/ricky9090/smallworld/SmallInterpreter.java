@@ -49,10 +49,10 @@ public class SmallInterpreter {
     public boolean loadImageFromInputStream(InputStream name) {
         try {
             List<SmallObject> objectList = new ArrayList<>();
-            List<int[]> list = new ArrayList<>();
+            List<int[]> objectDataList = new ArrayList<>();
 
             // Read in input into list
-            // for each line in list, create smallobject of appropriate class in obj
+            // for each line in list, create SmallObject of appropriate class in obj
             DataInputStream r = new DataInputStream(new BufferedInputStream(name));
             try {
                 int v = r.readInt();
@@ -62,79 +62,94 @@ public class SmallInterpreter {
                 while (true) {
                     int si = r.readInt();
                     int[] qw = new int[si];
-                    qw[0] = si;
-                    qw[1] = r.readInt();
-                    if (qw[1] == 0) { //SmallInt
-                        for (int i = 2; i < si; i++) {
+                    qw[SmallConst.OBJ.INDEX_OBJ_LENGTH] = si;
+                    qw[SmallConst.OBJ.INDEX_OBJ_TYPE] = r.readInt();
+
+                    int objLen = qw[SmallConst.OBJ.INDEX_OBJ_LENGTH];
+                    int objType = qw[SmallConst.OBJ.INDEX_OBJ_TYPE];
+
+                    if (objType == SmallConst.OBJ.TYPE_SMALL_INT) {
+                        for (int i = 2; i < objLen; i++) {
                             qw[i] = r.readInt();
                         }
                         objectList.add(new SmallInt());
-                    } else if (qw[1] == 2) { //SmallObject
-                        for (int i = 2; i < si; i++) {
+                    } else if (objType == SmallConst.OBJ.TYPE_SMALL_OBJECT) {
+                        for (int i = 2; i < objLen; i++) {
                             qw[i] = r.readInt();
                         }
                         objectList.add(new SmallObject());
-                    } else if (qw[1] == 1) { // SmallByteArray
-                        qw[2] = r.readInt(); // class
-                        qw[3] = r.readInt(); // datasize
-                        for (int i = 4; i < 4 + qw[3]; i++) {
+                    } else if (objType == SmallConst.OBJ.TYPE_SMALL_BYTE_ARRAY) {
+                        qw[SmallConst.OBJ.INDEX_OBJ_CLASS] = r.readInt(); // class
+                        qw[SmallConst.OBJ.INDEX_OBJ_DATA_LENGTH] = r.readInt(); // datasize
+
+                        int objDataLen = qw[SmallConst.OBJ.INDEX_OBJ_DATA_LENGTH];
+
+                        for (int i = 4; i < 4 + objDataLen; i++) {
                             qw[i] = r.readInt();
                         }
-                        for (int i = 4 + qw[3]; i < qw[0]; i++) {
+                        for (int i = 4 + objDataLen; i < objLen; i++) {
                             qw[i] = (int) r.readByte();
                         }
                         objectList.add(new SmallByteArray());
                     }
-                    list.add(qw);
-                }
-            } catch (EOFException e) {
-            }
-            System.out.println("Done reading into list");
 
-            // using list, fill in fields in smallobjects in obj
-            int it;
-            for (it = 0; it < list.size(); it++) {
-                SmallObject co = objectList.get(it);
-                int[] cso = list.get(it);
+                    objectDataList.add(qw);
+                }
+            } catch (IOException e) {
+                if (e instanceof EOFException) {
+                    System.out.println("Done reading into list");
+                } else {
+                    System.err.println("Error loading image !");
+                }
+            }
+
+            // using list, fill in fields in SmallObjects in obj
+            for (int it = 0; it < objectDataList.size(); it++) {
+                SmallObject target = objectList.get(it);
+                int[] rawData = objectDataList.get(it);
 
                 // Determine values
-                int objLength = cso[0];
-                int objType = cso[1];
-                int objClass = cso[2];
-                int objDataLength = cso[3];
+                int objLength = rawData[SmallConst.OBJ.INDEX_OBJ_LENGTH];
+                int objType = rawData[SmallConst.OBJ.INDEX_OBJ_TYPE];
+                int objClass = rawData[SmallConst.OBJ.INDEX_OBJ_CLASS];
+                int objDataLength = rawData[SmallConst.OBJ.INDEX_OBJ_DATA_LENGTH];
 
                 int[] objData = new int[objDataLength];
-                for (int i = 4; i < 4 + objDataLength; i++) {
-                    objData[i - 4] = cso[i];
+                if (objDataLength >= 0) {
+                    System.arraycopy(rawData, 4, objData, 0, objDataLength);
                 }
 
-                int smallIntValue = 0;
-                if (objType == 0) { // SmallInt
-                    smallIntValue = cso[objLength - 1];
+                // For SmallInt
+                if (objType == SmallConst.OBJ.TYPE_SMALL_INT) {
+                    int smallIntValue = 0;
+                    smallIntValue = rawData[objLength - 1];
+                    ((SmallInt) target).value = smallIntValue;
                 }
 
-                byte[] byteArrayValues = new byte[0];
-                if (objType == 1) { // SmallByteArray
-                    byteArrayValues = new byte[objLength - 4 - objDataLength];
+                // For SmallByteArray
+                if (objType == SmallConst.OBJ.TYPE_SMALL_BYTE_ARRAY) {
+                    byte[] byteArrayValues = new byte[objLength - 4 - objDataLength];
                     for (int i = 4 + objDataLength; i < objLength; i++) {
-                        byteArrayValues[i - 4 - objDataLength] = (byte) cso[i];
+                        byteArrayValues[i - 4 - objDataLength] = (byte) rawData[i];
                     }
+
+                    ((SmallByteArray) target).values = byteArrayValues;
                 }
 
                 // Add values
-                co.objClass = objectList.get(objClass);
-                co.data = new SmallObject[objDataLength];
+                target.objClass = objectList.get(objClass);
+                target.data = new SmallObject[objDataLength];
                 for (int i = 0; i < objDataLength; i++) {
-                    co.data[i] = objectList.get(objData[i]);
+                    target.data[i] = objectList.get(objData[i]);
                 }
 
-                if (objType == 0) { // SmallInt
-                    ((SmallInt) co).value = smallIntValue;
-                }
+                /*if (objType == SmallConst.OBJ.TYPE_SMALL_INT) { // SmallInt
+                    ((SmallInt) target).value = smallIntValue;
+                }*/
 
-                if (objType == 1) { // SmallByteArray
-                    ((SmallByteArray) co).values = byteArrayValues;
-                }
+                /*if (objType == SmallConst.OBJ.TYPE_SMALL_BYTE_ARRAY) { // SmallByteArray
+                    ((SmallByteArray) target).values = byteArrayValues;
+                }*/
 
             }
             System.out.println("Done initialising SmallObjects");
@@ -147,6 +162,7 @@ public class SmallInterpreter {
             BlockClass = objectList.get(4);
             ContextClass = objectList.get(5);
             IntegerClass = objectList.get(6);
+
             smallIntCache = new SmallInt[10];
             smallIntCache[0] = (SmallInt) objectList.get(7);
             smallIntCache[1] = (SmallInt) objectList.get(8);
