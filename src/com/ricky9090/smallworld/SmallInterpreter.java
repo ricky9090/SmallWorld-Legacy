@@ -55,9 +55,9 @@ public class SmallInterpreter {
             // for each line in list, create SmallObject of appropriate class in obj
             DataInputStream r = new DataInputStream(new BufferedInputStream(name));
             try {
-                int v = r.readInt();
-                if (v != imageFormatVersion) {
-                    JOptionPane.showMessageDialog(new JFrame("X"), "Incorrect Image Version:\nI was expecting " + Integer.toString(imageFormatVersion) + " but got " + Integer.toString(v) + "  \n");
+                int version = r.readInt();
+                if (version != imageFormatVersion) {
+                    JOptionPane.showMessageDialog(new JFrame("X"), "Incorrect Image Version:\nI was expecting " + imageFormatVersion + " but got " + version + "  \n");
                 }
                 while (true) {
                     int si = r.readInt();
@@ -88,7 +88,7 @@ public class SmallInterpreter {
                             qw[i] = r.readInt();
                         }
                         for (int i = 4 + objDataLen; i < objLen; i++) {
-                            qw[i] = (int) r.readByte();
+                            qw[i] = r.readByte();
                         }
                         objectList.add(new SmallByteArray());
                     }
@@ -121,9 +121,7 @@ public class SmallInterpreter {
 
                 // For SmallInt
                 if (objType == SmallConst.OBJ.TYPE_SMALL_INT) {
-                    int smallIntValue = 0;
-                    smallIntValue = rawData[objLength - 1];
-                    ((SmallInt) target).value = smallIntValue;
+                    ((SmallInt) target).value = rawData[objLength - 1];
                 }
 
                 // For SmallByteArray
@@ -142,14 +140,6 @@ public class SmallInterpreter {
                 for (int i = 0; i < objDataLength; i++) {
                     target.data[i] = objectList.get(objData[i]);
                 }
-
-                /*if (objType == SmallConst.OBJ.TYPE_SMALL_INT) { // SmallInt
-                    ((SmallInt) target).value = smallIntValue;
-                }*/
-
-                /*if (objType == SmallConst.OBJ.TYPE_SMALL_BYTE_ARRAY) { // SmallByteArray
-                    ((SmallByteArray) target).values = byteArrayValues;
-                }*/
 
             }
             System.out.println("Done initialising SmallObjects");
@@ -184,7 +174,7 @@ public class SmallInterpreter {
     }
 
     private boolean saveImageToOutputStream(OutputStream name) {
-        LinkedHashSet<SmallObject> set = new LinkedHashSet<SmallObject>();
+        LinkedHashSet<SmallObject> set = new LinkedHashSet<>();
         set.add(nilObject);
         set.add(trueObject);
         set.add(falseObject);
@@ -194,7 +184,7 @@ public class SmallInterpreter {
         set.add(IntegerClass);
         set.addAll(Arrays.asList(smallIntCache));
         while (true) {
-            java.util.List<SmallObject> newList = new ArrayList<SmallObject>();
+            java.util.List<SmallObject> newList = new ArrayList<>();
             for (SmallObject o : set) {
                 newList.add(o.objClass);
                 newList.addAll(Arrays.asList(o.data));
@@ -206,8 +196,7 @@ public class SmallInterpreter {
             }
         }
 
-        ArrayList<SmallObject> fulllist = new ArrayList<SmallObject>();
-        fulllist.addAll(set);
+        ArrayList<SmallObject> fulllist = new ArrayList<>(set);
 
         // At this point we should have a flat object memory in list
         // what size is it?
@@ -216,7 +205,7 @@ public class SmallInterpreter {
         // System.out.println();
 
         // Dump SmallJavaObjects
-        ArrayList<SmallObject> list = new ArrayList<SmallObject>();
+        ArrayList<SmallObject> list = new ArrayList<>();
         for (SmallObject o : fulllist) {
             if (!(o instanceof SmallJavaObject)) {
                 list.add(o);
@@ -293,7 +282,7 @@ public class SmallInterpreter {
             im.close();
 
         } catch (Exception e) {
-            System.out.println(e);
+            e.printStackTrace();
             return false;
         }
 
@@ -674,10 +663,10 @@ public class SmallInterpreter {
                                 }
                                 contextData[5] = newInteger(stackTop);
                                 contextData[4] = newInteger(bytePointer);
+
                                 SmallObject newContext = new SmallObject(ContextClass, 10);
-                                for (int i = 0; i < 10; i++) {
-                                    newContext.data[i] = returnedValue.data[i];
-                                }
+                                System.arraycopy(returnedValue.data, 0, newContext.data, 0, 10);
+
                                 newContext.data[6] = contextData[6];
                                 newContext.data[5] = smallIntCache[0]; // stack top
                                 newContext.data[4] = returnedValue.data[9]; // starting addr
@@ -751,7 +740,7 @@ public class SmallInterpreter {
                                 returnedValue = new SmallByteArray(stack[--stackTop], String.valueOf(low));
                                 break;
 
-                            case 18: // debugg -- dummy for now
+                            case 18: // debug -- dummy for now
                                 returnedValue = stack[--stackTop];
                                 System.out.println("Debug " + returnedValue + " class " + returnedValue.objClass.data[0]);
                                 break;
@@ -808,7 +797,7 @@ public class SmallInterpreter {
                                 SmallByteArray b = (SmallByteArray) stack[--stackTop];
                                 low = a.values.length;
                                 high = b.values.length;
-                                int s = (low < high) ? low : high;
+                                int s = Math.min(low, high);
                                 int r = 0;
                                 for (int i = 0; i < s; i++)
                                     if (a.values[i] < b.values[i]) {
@@ -862,7 +851,7 @@ public class SmallInterpreter {
                             case 32: { // object add: increase object size
                                 returnedValue = stack[--stackTop];
                                 low = returnedValue.data.length;
-                                SmallObject na[] = new SmallObject[low + 1];
+                                SmallObject[] na = new SmallObject[low + 1];
                                 for (int i = 0; i < low; i++) {
                                     na[i] = returnedValue.data[i];
                                 }
@@ -956,63 +945,63 @@ public class SmallInterpreter {
 
                             case 50:  // integer into float
                                 low = ((SmallInt) stack[--stackTop]).value;
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new Double((double) low));
+                                returnedValue = new SmallJavaObject(stack[--stackTop], (double) low);
                                 break;
 
                             case 51: { // addition of float
-                                double a = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                double b = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new Double(a + b));
+                                double a = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                double b = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                returnedValue = new SmallJavaObject(stack[--stackTop], a + b);
                             }
                             break;
 
                             case 52: { // subtraction of float
-                                double a = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                double b = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new Double(a - b));
+                                double a = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                double b = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                returnedValue = new SmallJavaObject(stack[--stackTop], a - b);
                             }
                             break;
 
                             case 53: { // multiplication of float
-                                double a = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                double b = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new Double(a * b));
+                                double a = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                double b = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                returnedValue = new SmallJavaObject(stack[--stackTop], a * b);
                             }
                             break;
 
                             case 54: { // division of float
-                                double a = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                double b = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new Double(a / b));
+                                double a = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                double b = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                returnedValue = new SmallJavaObject(stack[--stackTop], a / b);
                             }
                             break;
 
                             case 55: { // less than test of float
-                                double a = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                double b = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
+                                double a = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                double b = (Double) ((SmallJavaObject) stack[--stackTop]).value;
                                 returnedValue = (a < b) ? trueObject : falseObject;
                             }
                             break;
 
                             case 56: { // equality test of float
-                                double a = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
-                                double b = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
+                                double a = (Double) ((SmallJavaObject) stack[--stackTop]).value;
+                                double b = (Double) ((SmallJavaObject) stack[--stackTop]).value;
                                 returnedValue = (a == b) ? trueObject : falseObject;
                             }
                             break;
 
                             case 57: { // float to int
-                                double a = ((Double) ((SmallJavaObject) stack[--stackTop]).value).doubleValue();
+                                double a = (Double) ((SmallJavaObject) stack[--stackTop]).value;
                                 returnedValue = newInteger((int) a);
                             }
                             break;
 
                             case 58: // random float
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new Double(Math.random()));
+                                returnedValue = new SmallJavaObject(stack[--stackTop], Math.random());
                                 break;
 
                             case 59: // print of float
-                                returnedValue = (SmallJavaObject) stack[--stackTop];
+                                returnedValue = stack[--stackTop];
                                 returnedValue = new SmallByteArray(stack[--stackTop],
                                         String.valueOf(((Double) ((SmallJavaObject) returnedValue).value).doubleValue()));
                                 break;
@@ -1123,7 +1112,7 @@ public class SmallInterpreter {
                                 final SmallObject action = stack[--stackTop];
                                 SmallObject data = stack[--stackTop];
                                 returnedValue = stack[--stackTop];
-                                final JList jl = new JList(data.data);
+                                final JList<SmallObject> jl = new JList<>(data.data);
                                 jl.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
                                 returnedValue = new SmallJavaObject(returnedValue, new JScrollPane(jl));
                                 jl.addListSelectionListener(
@@ -1287,7 +1276,7 @@ public class SmallInterpreter {
                                 SmallJavaObject pan = (SmallJavaObject) stack[--stackTop];
                                 Object jo = pan.value;
                                 if (jo instanceof JScrollPane) {
-                                    jo = (JComponent) ((JScrollPane) jo).getViewport().getView();
+                                    jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseListener(new MouseAdapter() {
@@ -1303,7 +1292,7 @@ public class SmallInterpreter {
                                 SmallJavaObject pan = (SmallJavaObject) stack[--stackTop];
                                 Object jo = pan.value;
                                 if (jo instanceof JScrollPane) {
-                                    jo = (JComponent) ((JScrollPane) jo).getViewport().getView();
+                                    jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseListener(new MouseAdapter() {
@@ -1319,7 +1308,7 @@ public class SmallInterpreter {
                                 SmallJavaObject pan = (SmallJavaObject) stack[--stackTop];
                                 Object jo = pan.value;
                                 if (jo instanceof JScrollPane) {
-                                    jo = (JComponent) ((JScrollPane) jo).getViewport().getView();
+                                    jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseMotionListener(new MouseMotionAdapter() {
@@ -1417,7 +1406,7 @@ public class SmallInterpreter {
                                     newJar = new JarOutputStream(new FileOutputStream(tempJar));
                                     // } catch (Exception e) {JOptionPane.showMessageDialog(new JFrame("X"), "1");}
 
-                                    byte buffer[] = new byte[1024];
+                                    byte[] buffer = new byte[1024];
                                     int bytesRead;
 
                                     // Add back the original files, except image
@@ -1569,7 +1558,7 @@ public class SmallInterpreter {
             } // end of inner loop
 
             if ((context == null) || (context == nilObject)) {
-//System.out.println("lookups " + lookup + " cached " + cached);
+                //System.out.println("lookups " + lookup + " cached " + cached);
                 return returnedValue;
             }
             contextData = context.data;
@@ -1585,17 +1574,14 @@ public class SmallInterpreter {
         public ActionThread(SmallObject block, Thread myT) {
             myThread = myT;
             action = new SmallObject(ContextClass, 10);
-            for (int i = 0; i < 10; i++) {
-                action.data[i] = block.data[i];
-            }
+            System.arraycopy(block.data, 0, action.data, 0, 10);
         }
 
         public ActionThread(SmallObject block, Thread myT, int v1) {
             myThread = myT;
             action = new SmallObject(ContextClass, 10);
-            for (int i = 0; i < 10; i++) {
-                action.data[i] = block.data[i];
-            }
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+
             int argLoc = ((SmallInt) action.data[7]).value;
             action.data[2].data[argLoc] = newInteger(v1);
         }
@@ -1603,9 +1589,8 @@ public class SmallInterpreter {
         public ActionThread(SmallObject block, Thread myT, int v1, int v2) {
             myThread = myT;
             action = new SmallObject(ContextClass, 10);
-            for (int i = 0; i < 10; i++) {
-                action.data[i] = block.data[i];
-            }
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+
             int argLoc = ((SmallInt) action.data[7]).value;
             action.data[2].data[argLoc] = newInteger(v1);
             action.data[2].data[argLoc + 1] = newInteger(v2);
