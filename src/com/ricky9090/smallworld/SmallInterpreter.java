@@ -1,6 +1,8 @@
 package com.ricky9090.smallworld;
 
+import com.ricky9090.smallworld.display.ButtonListener;
 import com.ricky9090.smallworld.display.IScreen;
+import com.ricky9090.smallworld.display.ListListener;
 import com.ricky9090.smallworld.policy.ScreenPolicy;
 import com.ricky9090.smallworld.obj.SmallByteArray;
 import com.ricky9090.smallworld.obj.SmallInt;
@@ -769,8 +771,9 @@ public class SmallInterpreter {
                             case 19: {// block fork
                                 returnedValue = stack[--stackTop];
                                 taskManager.postTask(new ActionTask(SmallInterpreter.this, returnedValue));
-                                break;
                             }
+                            break;
+
                             case 20: // byte array allocation
                                 low = ((SmallInt) stack[--stackTop]).value;
                                 returnedValue = new SmallByteArray(stack[--stackTop], low);
@@ -1096,46 +1099,65 @@ public class SmallInterpreter {
 
                             case 71: { // new button
                                 final SmallObject action = stack[--stackTop];
-                                final JButton jb = new JButton(stack[--stackTop].toString());
+                                /*final JButton jb = new JButton(stack[--stackTop].toString());
                                 returnedValue = new SmallJavaObject(stack[--stackTop], jb);
                                 jb.addActionListener(new ActionListener() {
                                     public void actionPerformed(ActionEvent e) {
                                         taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
                                     }
+                                });*/
+
+                                String text = stack[--stackTop].toString();
+                                Object button = screen.createButton(text, new ButtonListener() {
+                                    @Override
+                                    public void onClick() {
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
+                                    }
                                 });
+                                returnedValue = new SmallJavaObject(stack[--stackTop], button);
                             }
                             break;
 
-                            case 72: // new text line
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new JTextField());
+                            case 72: { // new text line
+                                returnedValue = new SmallJavaObject(stack[--stackTop], screen.createTextLine());
                                 break;
+                            }
 
-                            case 73: // new text area
-                                JTextArea jta = new JTextArea();
-                                jta.setTabSize(4);
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new JScrollPane(jta));
+                            case 73: { // new text area
+                                returnedValue = new SmallJavaObject(stack[--stackTop], screen.createTextArea());
                                 break;
+                            }
 
                             case 74: { // new grid panel
-                                SmallObject data = stack[--stackTop];
+                                SmallObject dataHolder = stack[--stackTop];
                                 low = ((SmallInt) stack[--stackTop]).value;
                                 high = ((SmallInt) stack[--stackTop]).value;
-                                JPanel jp = new JPanel();
+
+                                Object panel = screen.createGridPanel(dataHolder.data, low, high);
+                                returnedValue = new SmallJavaObject(stack[--stackTop], panel);
+
+                                /*JPanel jp = new JPanel();
                                 jp.setLayout(new GridLayout(low, high));
                                 for (int i = 0; i < data.data.length; i++) {
                                     jp.add((Component) ((SmallJavaObject) data.data[i]).value);
-                                }
-                                returnedValue = new SmallJavaObject(stack[--stackTop], jp);
+                                }*/
                             }
                             break;
 
                             case 75: { // new list panel
                                 final SmallObject action = stack[--stackTop];
-                                SmallObject data = stack[--stackTop];
+                                SmallObject dataHolder = stack[--stackTop];
                                 returnedValue = stack[--stackTop];
-                                final JList<SmallObject> jl = new JList<>(data.data);
+                                Object listPanel = screen.createListPanel(dataHolder.data, new ListListener() {
+                                    @Override
+                                    public void onItemClick(int zeroBaseIndex) {
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action, zeroBaseIndex + 1));
+                                    }
+                                });
+
+                                returnedValue = new SmallJavaObject(returnedValue, listPanel);
+                                /*final JList<SmallObject> jl = new JList<>(data.data);
                                 jl.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
-                                returnedValue = new SmallJavaObject(returnedValue, new JScrollPane(jl));
                                 jl.addListSelectionListener(
                                         new ListSelectionListener() {
                                             public void valueChanged(ListSelectionEvent e) {
@@ -1143,42 +1165,50 @@ public class SmallInterpreter {
                                                     taskManager.postTask(new ActionTask(SmallInterpreter.this, action, jl.getSelectedIndex() + 1));
                                                 }
                                             }
-                                        });
+                                        });*/
                             }
                             break;
 
                             case 76: { // new border panel
-                                JPanel jp = new JPanel();
-                                jp.setLayout(new BorderLayout());
+                                Object borderPanel = screen.createBorderPanel();
+                                //JPanel jp = new JPanel();
+                                //jp.setLayout(new BorderLayout());
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    jp.add("Center", (Component) ((SmallJavaObject) returnedValue).value);
+                                    screen.addToBorder(borderPanel, IScreen.POSITION_CENTER, ((SmallJavaObject) returnedValue).value);
+                                    //jp.add("Center", (Component) ((SmallJavaObject) returnedValue).value);
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    jp.add("West", (Component) ((SmallJavaObject) returnedValue).value);
+                                    screen.addToBorder(borderPanel, IScreen.POSITION_LEFT, ((SmallJavaObject) returnedValue).value);
+                                    //jp.add("West", (Component) ((SmallJavaObject) returnedValue).value);
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    jp.add("East", (Component) ((SmallJavaObject) returnedValue).value);
+                                    screen.addToBorder(borderPanel, IScreen.POSITION_RIGHT, ((SmallJavaObject) returnedValue).value);
+                                    //jp.add("East", (Component) ((SmallJavaObject) returnedValue).value);
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    jp.add("South", (Component) ((SmallJavaObject) returnedValue).value);
+                                    screen.addToBorder(borderPanel, IScreen.POSITION_BOTTOM, ((SmallJavaObject) returnedValue).value);
+                                    //jp.add("South", (Component) ((SmallJavaObject) returnedValue).value);
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    jp.add("North", (Component) ((SmallJavaObject) returnedValue).value);
+                                    screen.addToBorder(borderPanel, IScreen.POSITION_TOP, ((SmallJavaObject) returnedValue).value);
+                                    //jp.add("North", (Component) ((SmallJavaObject) returnedValue).value);
                                 }
-                                returnedValue = new SmallJavaObject(stack[--stackTop], jp);
+                                returnedValue = new SmallJavaObject(stack[--stackTop], borderPanel);
                             }
                             break;
 
                             case 77: { // set image on label
-                                SmallJavaObject img = (SmallJavaObject) stack[--stackTop];
-                                SmallJavaObject lab = (SmallJavaObject) stack[--stackTop];
-                                Object jo = lab.value;
-                                if (jo instanceof JScrollPane) {
+                                SmallJavaObject imgHolder = (SmallJavaObject) stack[--stackTop];
+                                SmallJavaObject panelHolder = (SmallJavaObject) stack[--stackTop];
+                                Object target = panelHolder.value;
+                                Object img = imgHolder.value;
+                                screen.addImageToLabel(target, img);
+                                /*if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 if (jo instanceof JLabel) {
@@ -1187,57 +1217,63 @@ public class SmallInterpreter {
                                     jlb.setHorizontalAlignment(SwingConstants.LEFT);
                                     jlb.setVerticalAlignment(SwingConstants.TOP);
                                     jlb.repaint();
-                                }
+                                }*/
                             }
                             break;
 
                             case 79: {// repaint
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject jo = (SmallJavaObject) returnedValue;
-                                ((JComponent) jo.value).repaint();
+                                //((JComponent) jo.value).repaint();
+                                screen.repaintComponent(jo.value);
                             }
                             break;
 
                             case 80: { // content of text area
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop]; // class
-                                Object jo = jt.value;
-                                if (jo instanceof JScrollPane) {
+                                Object target = jt.value;
+                                String text = screen.getText(target);
+                                returnedValue = new SmallByteArray(returnedValue, text);
+                                /*if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 if (jo instanceof JTextComponent) {
                                     returnedValue = new SmallByteArray(returnedValue, ((JTextComponent) jo).getText());
                                 } else {
                                     returnedValue = new SmallByteArray(returnedValue, "");
-                                }
+                                }*/
                             }
                             break;
 
                             case 81: {// content of selected text area
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop]; // class
-                                Object jo = jt.value;
-                                if (jo instanceof JScrollPane) {
+                                Object target = jt.value;
+                                String text = screen.getSelectedText(target);
+                                returnedValue = new SmallByteArray(returnedValue, text);
+                                /*if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 if (jo instanceof JTextComponent) {
                                     returnedValue = new SmallByteArray(returnedValue, ((JTextComponent) jo).getSelectedText());
                                 } else {
                                     returnedValue = new SmallByteArray(returnedValue, "");
-                                }
+                                }*/
                             }
                             break;
 
                             case 82: { // set text area
                                 returnedValue = stack[--stackTop];// text
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
-                                Object jo = jt.value;
-                                if (jo instanceof JScrollPane) {
+                                Object target = jt.value;
+                                screen.setText(target, returnedValue.toString());
+                                /*if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 if (jo instanceof JTextComponent) {
                                     ((JTextComponent) jo).setText(returnedValue.toString());
-                                }
+                                }*/
                             }
                             break;
 
@@ -1346,20 +1382,22 @@ public class SmallInterpreter {
                             case 89: { // set selected text area
                                 returnedValue = stack[--stackTop];// text
                                 SmallJavaObject jt = (SmallJavaObject) stack[--stackTop];
-                                Object jo = jt.value;
-                                if (jo instanceof JScrollPane) {
+                                Object target = jt.value;
+                                screen.replaceSelectedText(target, returnedValue.toString());
+                                /*if (jo instanceof JScrollPane) {
                                     jo = ((JScrollPane) jo).getViewport().getView();
                                 }
                                 if (jo instanceof JTextComponent) {
                                     ((JTextComponent) jo).replaceSelection(returnedValue.toString());
-                                }
+                                }*/
                             }
                             break;
 
                             case 90: { // new menu
                                 SmallObject title = stack[--stackTop]; // text
                                 returnedValue = stack[--stackTop]; // class
-                                JMenu menu = new JMenu(title.toString());
+                                //JMenu menu = new JMenu(title.toString());
+                                Object menu = screen.createMenu(title.toString());
                                 returnedValue = new SmallJavaObject(returnedValue, menu);
                             }
                             break;
@@ -1369,7 +1407,13 @@ public class SmallInterpreter {
                                 final SmallObject text = stack[--stackTop];
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject mo = (SmallJavaObject) returnedValue;
-                                JMenu menu = (JMenu) mo.value;
+                                screen.addMenuItem(mo.value, text.toString(), new ButtonListener() {
+                                    @Override
+                                    public void onClick() {
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
+                                    }
+                                });
+                                /*JMenu menu = (JMenu) mo.value;
                                 JMenuItem ji = new JMenuItem(text.toString());
                                 ji.addActionListener(
                                         new ActionListener() {
@@ -1377,7 +1421,7 @@ public class SmallInterpreter {
                                                 taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
                                             }
                                         });
-                                menu.add(ji);
+                                menu.add(ji);*/
                             }
                             break;
 
