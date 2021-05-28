@@ -1,9 +1,13 @@
 package com.ricky9090.smallworld;
 
+import com.ricky9090.smallworld.display.IScreen;
+import com.ricky9090.smallworld.policy.ScreenPolicy;
 import com.ricky9090.smallworld.obj.SmallByteArray;
 import com.ricky9090.smallworld.obj.SmallInt;
 import com.ricky9090.smallworld.obj.SmallJavaObject;
 import com.ricky9090.smallworld.obj.SmallObject;
+import com.ricky9090.smallworld.task.ITaskManager;
+import com.ricky9090.smallworld.policy.TaskPolicy;
 
 import java.io.*;
 import java.awt.*;
@@ -45,6 +49,14 @@ public class SmallInterpreter {
     public SmallObject IntegerClass;
     // --- global constants end ---
 
+    IScreen screen;
+    ITaskManager taskManager;
+
+    public SmallInterpreter() {
+        screen = ScreenPolicy.provideScreen();
+        taskManager = TaskPolicy.provideTaskManager(this);
+    }
+
     // Load and save image
     public boolean loadImageFromInputStream(InputStream name) {
         try {
@@ -57,7 +69,8 @@ public class SmallInterpreter {
             try {
                 int version = r.readInt();
                 if (version != imageFormatVersion) {
-                    JOptionPane.showMessageDialog(new JFrame("X"), "Incorrect Image Version:\nI was expecting " + imageFormatVersion + " but got " + version + "  \n");
+                    String msg = "Incorrect Image Version:\nI was expecting " + imageFormatVersion + " but got " + version + "  \n";
+                    screen.showToast(msg);
                 }
                 while (true) {
                     int si = r.readInt();
@@ -166,9 +179,15 @@ public class SmallInterpreter {
             smallIntCache[9] = (SmallInt) objectList.get(16);
             System.out.println("Done loading system");
 
+            System.out.println("Starting taskManager");
+            taskManager.launch();
+
+
             return true;
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(new JFrame("X"), "IO Exception: " + e.toString());
+            String msg = "IO Exception: " + e.toString();
+            screen.showToast(msg);
+            e.printStackTrace();
             return false;
         }
     }
@@ -363,7 +382,7 @@ public class SmallInterpreter {
 
         outerLoop:
         while (true) {
-
+            //System.out.println("enter outer loop");
             SmallObject method = contextData[0]; // method in context
             byte[] code = ((SmallByteArray) method.data[1]).values; // code pointer
             int bytePointer = ((SmallInt) contextData[4]).value;
@@ -390,6 +409,7 @@ public class SmallInterpreter {
                     low = (int) code[bytePointer++] & 0x0FF;
                 }
 
+                //System.out.println("enter inner loop code: " + high);
                 switch (high) {
 
                     case 1: // PushInstance
@@ -608,6 +628,7 @@ public class SmallInterpreter {
 
                     case 13: // Do Primitive, low is arg count, next byte is number
                         high = (int) code[bytePointer++] & 0x0FF;
+                        //System.out.println("do primitive: " + high);
                         switch (high) {
 
                             case 1: // object identity
@@ -745,11 +766,11 @@ public class SmallInterpreter {
                                 System.out.println("Debug " + returnedValue + " class " + returnedValue.objClass.data[0]);
                                 break;
 
-                            case 19: // block fork
+                            case 19: {// block fork
                                 returnedValue = stack[--stackTop];
-                                new ActionThread(returnedValue, myThread).start();
+                                taskManager.postTask(new ActionTask(SmallInterpreter.this, returnedValue));
                                 break;
-
+                            }
                             case 20: // byte array allocation
                                 low = ((SmallInt) stack[--stackTop]).value;
                                 returnedValue = new SmallByteArray(stack[--stackTop], low);
@@ -1007,9 +1028,7 @@ public class SmallInterpreter {
                                 break;
 
                             case 60: { // make window
-                                JDialog jd = new JDialog();
-                                jd.setVisible(false);
-                                returnedValue = new SmallJavaObject(stack[--stackTop], jd);
+                                returnedValue = new SmallJavaObject(stack[--stackTop], screen.createWindow());
                             }
                             break;
 
@@ -1017,28 +1036,29 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject jo = (SmallJavaObject) stack[--stackTop];
                                 if (returnedValue == trueObject) {
-                                    ((JDialog) jo.value).setVisible(true);
+                                    screen.showWindow(jo.value);
                                 } else {
-                                    ((JDialog) jo.value).setVisible(false);
+                                    screen.hideWindow(jo.value);
                                 }
                             }
                             break;
 
                             case 62: { // set content pane
-                                SmallJavaObject tc = (SmallJavaObject) stack[--stackTop];
+                                SmallJavaObject contentHolder = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop];
-                                SmallJavaObject jd = (SmallJavaObject) returnedValue;
-                                ((JDialog) jd.value).getContentPane().add((Component) tc.value);
+                                SmallJavaObject dialogHolder = (SmallJavaObject) returnedValue;
+
+                                screen.setWindowContent(dialogHolder.value, contentHolder.value);
                             }
                             break;
 
-                            case 63: // set size
+                            case 63: {  // set size
                                 low = ((SmallInt) stack[--stackTop]).value;
                                 high = ((SmallInt) stack[--stackTop]).value;
                                 returnedValue = stack[--stackTop];
-                            {
+
                                 SmallJavaObject wo = (SmallJavaObject) returnedValue;
-                                ((JDialog) wo.value).setSize(low, high);
+                                screen.setWindowSize(wo.value, low, high);
                             }
                             break;
 
@@ -1046,9 +1066,8 @@ public class SmallInterpreter {
                                 SmallJavaObject menu = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject jo = (SmallJavaObject) returnedValue;
-                                JDialog jd = (JDialog) jo.value;
-                                if (jd.getJMenuBar() == null) jd.setJMenuBar(new JMenuBar());
-                                jd.getJMenuBar().add((JMenu) menu.value);
+
+                                screen.addMenu(jo.value, menu.value);
                             }
                             break;
 
@@ -1056,20 +1075,22 @@ public class SmallInterpreter {
                                 SmallObject title = stack[--stackTop];
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject jd = (SmallJavaObject) returnedValue;
-                                ((JDialog) jd.value).setTitle(title.toString());
+
+                                screen.setWindowTitle(jd.value, title.toString());
                             }
                             break;
 
                             case 66: { // repaint window
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject jd = (SmallJavaObject) returnedValue;
-                                ((JDialog) jd.value).repaint();
+
+                                screen.repaintWindow(jd.value);
                             }
                             break;
 
                             case 70: { // new label panel
-                                JLabel jl = new JLabel(stack[--stackTop].toString());
-                                returnedValue = new SmallJavaObject(stack[--stackTop], new JScrollPane(jl));
+                                String content = stack[--stackTop].toString();
+                                returnedValue = new SmallJavaObject(stack[--stackTop], screen.createPanel(content));
                             }
                             break;
 
@@ -1079,7 +1100,7 @@ public class SmallInterpreter {
                                 returnedValue = new SmallJavaObject(stack[--stackTop], jb);
                                 jb.addActionListener(new ActionListener() {
                                     public void actionPerformed(ActionEvent e) {
-                                        new ActionThread(action, myThread).start();
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
                                     }
                                 });
                             }
@@ -1119,8 +1140,7 @@ public class SmallInterpreter {
                                         new ListSelectionListener() {
                                             public void valueChanged(ListSelectionEvent e) {
                                                 if ((!e.getValueIsAdjusting()) && (jl.getSelectedIndex() >= 0)) {
-                                                    new ActionThread(action, myThread, jl.getSelectedIndex() + 1).start();
-                                                    //new ActionThread(action, myThread).start();
+                                                    taskManager.postTask(new ActionTask(SmallInterpreter.this, action, jl.getSelectedIndex() + 1));
                                                 }
                                             }
                                         });
@@ -1264,7 +1284,7 @@ public class SmallInterpreter {
                                 if (action != nilObject) {
                                     bar.addAdjustmentListener(new AdjustmentListener() {
                                         public void adjustmentValueChanged(AdjustmentEvent ae) {
-                                            new ActionThread(action, myThread, ae.getValue()).start();
+                                            taskManager.postTask(new ActionTask(SmallInterpreter.this, action, ae.getValue()));
                                         }
                                     });
                                 }
@@ -1281,7 +1301,7 @@ public class SmallInterpreter {
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseListener(new MouseAdapter() {
                                     public void mousePressed(MouseEvent e) {
-                                        new ActionThread(action, myThread, e.getX(), e.getY()).start();
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action, e.getX(), e.getY()));
                                     }
                                 });
                             }
@@ -1297,7 +1317,7 @@ public class SmallInterpreter {
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseListener(new MouseAdapter() {
                                     public void mouseReleased(MouseEvent e) {
-                                        new ActionThread(action, myThread, e.getX(), e.getY()).start();
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action, e.getX(), e.getY()));
                                     }
                                 });
                             }
@@ -1313,11 +1333,11 @@ public class SmallInterpreter {
                                 final JComponent jpan = (JComponent) jo;
                                 jpan.addMouseMotionListener(new MouseMotionAdapter() {
                                     public void mouseDragged(MouseEvent e) {
-                                        new ActionThread(action, myThread, e.getX(), e.getY()).start();
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action, e.getX(), e.getY()));
                                     }
 
                                     public void mouseMoved(MouseEvent e) {
-                                        new ActionThread(action, myThread, e.getX(), e.getY()).start();
+                                        taskManager.postTask(new ActionTask(SmallInterpreter.this, action, e.getX(), e.getY()));
                                     }
                                 });
                             }
@@ -1354,7 +1374,7 @@ public class SmallInterpreter {
                                 ji.addActionListener(
                                         new ActionListener() {
                                             public void actionPerformed(ActionEvent e) {
-                                                new ActionThread(action, myThread).start();
+                                                taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
                                             }
                                         });
                                 menu.add(ji);
@@ -1453,7 +1473,7 @@ public class SmallInterpreter {
                                     JDialog jo = (JDialog) pan.value;
                                     jo.addWindowListener(new WindowAdapter() {
                                         public void windowClosing(WindowEvent e) {
-                                            new ActionThread(action, myThread).start();
+                                            taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
                                         }
                                     });
                                 } catch (Exception e) {
@@ -1567,46 +1587,170 @@ public class SmallInterpreter {
             stack[stackTop++] = returnedValue;
             contextData[5] = newInteger(stackTop);
         }
+
     } // end of outer loop
 
 
-    private class ActionThread extends Thread {
-        public ActionThread(SmallObject block, Thread myT) {
-            myThread = myT;
-            action = new SmallObject(ContextClass, 10);
-            System.arraycopy(block.data, 0, action.data, 0, 10);
-        }
-
-        public ActionThread(SmallObject block, Thread myT, int v1) {
-            myThread = myT;
-            action = new SmallObject(ContextClass, 10);
-            System.arraycopy(block.data, 0, action.data, 0, 10);
-
-            int argLoc = ((SmallInt) action.data[7]).value;
-            action.data[2].data[argLoc] = newInteger(v1);
-        }
-
-        public ActionThread(SmallObject block, Thread myT, int v1, int v2) {
-            myThread = myT;
-            action = new SmallObject(ContextClass, 10);
-            System.arraycopy(block.data, 0, action.data, 0, 10);
-
-            int argLoc = ((SmallInt) action.data[7]).value;
-            action.data[2].data[argLoc] = newInteger(v1);
-            action.data[2].data[argLoc + 1] = newInteger(v2);
-        }
+    public static class ActionThread extends Thread {
 
         private SmallObject action;
         private Thread myThread;
+        private SmallInterpreter interpreter;
+
+
+        public ActionThread(SmallInterpreter vm, SmallObject block, Thread myT) {
+            myThread = myT;
+            interpreter = vm;
+            action = new SmallObject(vm.ContextClass, 10);
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+        }
+
+        public ActionThread(SmallInterpreter vm, SmallObject block, Thread myT, int v1) {
+            myThread = myT;
+            interpreter = vm;
+            action = new SmallObject(vm.ContextClass, 10);
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+
+            int argLoc = ((SmallInt) action.data[7]).value;
+            action.data[2].data[argLoc] = vm.newInteger(v1);
+        }
+
+        public ActionThread(SmallInterpreter vm, SmallObject block, Thread myT, int v1, int v2) {
+            myThread = myT;
+            interpreter = vm;
+            action = new SmallObject(vm.ContextClass, 10);
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+
+            int argLoc = ((SmallInt) action.data[7]).value;
+            action.data[2].data[argLoc] = vm.newInteger(v1);
+            action.data[2].data[argLoc + 1] = vm.newInteger(v2);
+        }
+
 
         public void run() {
             int stksize = action.data[3].data.length;
-            action.data[3] = new SmallObject(ArrayClass, stksize); // new stack
+            action.data[3] = new SmallObject(interpreter.ArrayClass, stksize); // new stack
             action.data[4] = action.data[9]; // byte pointer
-            action.data[5] = newInteger(0); // stack top
-            action.data[6] = nilObject;
+            action.data[5] = interpreter.newInteger(0); // stack top
+            action.data[6] = interpreter.nilObject;
             try {
-                execute(action, this, myThread);
+                interpreter.execute(action, this, myThread);
+            } catch (Exception e) {
+                System.out.println("caught exception " + e);
+            }
+        }
+    }
+
+    public static class ActionContext implements Runnable {
+        private SmallObject action;
+        private SmallInterpreter interpreter;
+
+        public ActionContext(SmallInterpreter vm, SmallObject context) {
+            interpreter = vm;
+            action = new SmallObject(vm.ContextClass, context.data.length);
+            System.arraycopy(context.data, 0, action.data, 0, context.data.length);
+        }
+
+        @Override
+        public void run() {
+            try {
+                interpreter.execute(action, null, null);
+            } catch (Exception e) {
+                System.out.println("caught exception.");
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static class ActionBlock implements Runnable {
+        private SmallObject action;
+        private SmallInterpreter interpreter;
+
+        public ActionBlock(SmallInterpreter vm, SmallObject block) {
+            interpreter = vm;
+            action = new SmallObject(vm.ContextClass, 10);
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+        }
+
+        public ActionBlock(SmallInterpreter vm, SmallObject block, int v1) {
+            interpreter = vm;
+            action = new SmallObject(vm.ContextClass, 10);
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+
+            int argLoc = ((SmallInt) action.data[7]).value;
+            action.data[2].data[argLoc] = vm.newInteger(v1);
+        }
+
+        public ActionBlock(SmallInterpreter vm, SmallObject block, int v1, int v2) {
+            interpreter = vm;
+            action = new SmallObject(vm.ContextClass, 10);
+            System.arraycopy(block.data, 0, action.data, 0, 10);
+
+            int argLoc = ((SmallInt) action.data[7]).value;
+            action.data[2].data[argLoc] = vm.newInteger(v1);
+            action.data[2].data[argLoc + 1] = vm.newInteger(v2);
+        }
+
+
+        public void run() {
+            int stackSize = action.data[3].data.length;
+            action.data[3] = new SmallObject(interpreter.ArrayClass, stackSize); // new stack
+            action.data[4] = action.data[9]; // byte pointer
+            action.data[5] = interpreter.newInteger(0); // stack top
+            action.data[6] = interpreter.nilObject;
+            try {
+                interpreter.execute(action, null, null);
+            } catch (Exception e) {
+                System.out.println("caught exception " + e);
+            }
+        }
+    }
+
+    public static class ActionTask implements Runnable {
+        private SmallObject action;
+        private SmallInterpreter interpreter;
+
+        public ActionTask(SmallInterpreter vm, SmallObject block) {
+            interpreter = vm;
+            int dataSize = block.data.length;
+            action = new SmallObject(vm.ContextClass, dataSize);
+            System.arraycopy(block.data, 0, action.data, 0, dataSize);
+        }
+
+        public ActionTask(SmallInterpreter vm, SmallObject block, int v1) {
+            interpreter = vm;
+            int dataSize = block.data.length;
+            action = new SmallObject(vm.ContextClass, dataSize);
+            System.arraycopy(block.data, 0, action.data, 0, dataSize);
+
+            if (dataSize >= 8) {
+                int argLoc = ((SmallInt) action.data[7]).value;
+                action.data[2].data[argLoc] = vm.newInteger(v1);
+            }
+        }
+
+        public ActionTask(SmallInterpreter vm, SmallObject block, int v1, int v2) {
+            interpreter = vm;
+            int dataSize = block.data.length;
+            action = new SmallObject(vm.ContextClass, dataSize);
+            System.arraycopy(block.data, 0, action.data, 0, dataSize);
+
+            if (dataSize >= 8) {
+                int argLoc = ((SmallInt) action.data[7]).value;
+                action.data[2].data[argLoc] = vm.newInteger(v1);
+                action.data[2].data[argLoc + 1] = vm.newInteger(v2);
+            }
+        }
+
+
+        public void run() {
+            int stackSize = action.data[3].data.length;
+            action.data[3] = new SmallObject(interpreter.ArrayClass, stackSize); // new stack
+            action.data[4] = action.data[9]; // byte pointer
+            action.data[5] = interpreter.newInteger(0); // stack top
+            action.data[6] = interpreter.nilObject;
+            try {
+                interpreter.execute(action, null, null);
             } catch (Exception e) {
                 System.out.println("caught exception " + e);
             }

@@ -8,10 +8,12 @@ public class Sema {
     private boolean hasBeenSet = false;
 
     public synchronized SmallObject get() {
-        if (!hasBeenSet) try {
-            wait();
-        } catch (Exception e) {
-            System.out.println("Sema got exception " + e);
+        if (!hasBeenSet) {
+            try {
+                wait();
+            } catch (Exception e) {
+                System.out.println("Sema got exception " + e);
+            }
         }
         return value;
     }

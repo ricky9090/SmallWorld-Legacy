@@ -16,12 +16,13 @@ import javax.swing.*;
  */
 
 public class SmallWorld {
-    static public void main(String[] args) {
+    public static void main(String[] args) {
         world = new SmallWorld(args);
     }
 
     private static SmallWorld world;
     private SmallInterpreter theInterpreter = new SmallInterpreter();
+    public boolean running = true;
 
     public SmallWorld(String[] args) {
         boolean done = false;
@@ -62,7 +63,9 @@ public class SmallWorld {
             args.data[0] = rec;
             SmallObject ctx = theInterpreter.buildContext(theInterpreter.nilObject, args, doItMeth);
             try {
-                theInterpreter.execute(ctx, null, null);
+                SmallInterpreter.ActionContext actionTask = new SmallInterpreter.ActionContext(theInterpreter, ctx);
+                //theInterpreter.execute(ctx, null, null);
+                theInterpreter.taskManager.postTask(actionTask);
             } catch (Exception ex) {
                 System.out.println("caught exeception " + ex);
             }
