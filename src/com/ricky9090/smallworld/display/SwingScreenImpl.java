@@ -1,8 +1,9 @@
 package com.ricky9090.smallworld.display;
 
-import com.ricky9090.smallworld.SmallInterpreter;
-import com.ricky9090.smallworld.obj.SmallByteArray;
 import com.ricky9090.smallworld.obj.SmallJavaObject;
+import com.ricky9090.smallworld.obj.SmallObject;
+import com.ricky9090.smallworld.view.*;
+import com.ricky9090.smallworld.view.impl.swing.*;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -34,92 +35,63 @@ public class SwingScreenImpl implements IScreen {
     }
 
     @Override
-    public Object createWindow() {
-        JDialog jd = new JDialog();
-        jd.setVisible(false);
-        return jd;
+    public STWindow createWindow() {
+        STWindow window = new SwingWindow();
+        return window;
     }
 
     @Override
-    public Object createPanel(String content) {
-        JLabel jl = new JLabel(content);
-        return new JScrollPane(jl);
+    public STPanel createPanel(String content) {
+        return new SwingPanel(content);
     }
 
     @Override
-    public Object createButton(String text, final ButtonListener listener) {
-        JButton jb = new JButton(text);
-        jb.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                listener.onClick();
-            }
-        });
-        return jb;
+    public STButton createButton(String text) {
+        STButton button = new SwingButton(text);
+        return button;
     }
 
     @Override
-    public Object createTextLine() {
-        return new JTextField();
+    public STTextField createTextLine() {
+        return new SwingTextField();
     }
 
     @Override
-    public Object createTextArea() {
-        JTextArea jta = new JTextArea();
-        jta.setTabSize(4);
-        return new JScrollPane(jta);
+    public STTextArea createTextArea() {
+        return new SwingTextArea();
     }
 
     @Override
-    public Object createGridPanel(Object[] dataArray, int rows, int cols) {
-        JPanel jp = new JPanel();
-        jp.setLayout(new GridLayout(rows, cols));
-        for (int i = 0; i < dataArray.length; i++) {
-            jp.add((Component) ((SmallJavaObject) dataArray[i]).value);
-        }
-        return jp;
+    public STGridPanel createGridPanel(int rows, int cols) {
+        STGridPanel panel = new SwingGridPanel(rows, cols);
+        return panel;
     }
 
     @Override
-    public Object createListPanel(Object[] dataArray, ListListener listener) {
-        final JList<Object> jList = new JList<>(dataArray);
-        jList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
-        jList.addListSelectionListener(new ListSelectionListener() {
-            public void valueChanged(ListSelectionEvent e) {
-                if ((!e.getValueIsAdjusting()) && (jList.getSelectedIndex() >= 0)) {
-                    listener.onItemClick(jList.getSelectedIndex());
-                }
-            }
-        });
-        return new JScrollPane(jList);
+    public STListView createListPanel(SmallObject[] dataArray) {
+        return new SwingListView(dataArray);
     }
 
     @Override
-    public Object createMenu(String title) {
-        return new JMenu(title);
+    public STMenu createMenu(String title) {
+        return new SwingMenu(title);
     }
 
     @Override
-    public void addMenuItem(Object targetMenu, String text, ButtonListener listener) {
-        if (targetMenu instanceof JMenu) {
-            JMenu menu = (JMenu) targetMenu;
-            JMenuItem ji = new JMenuItem(text);
-            ji.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    listener.onClick();
-                }
-            });
-            menu.add(ji);
-        }
+    public STMenuItem createMenuItem(String text) {
+        return new SwingMenuItem(text);
     }
 
     @Override
-    public Object createBorderPanel() {
-        JPanel jp = new JPanel();
-        jp.setLayout(new BorderLayout());
-        return jp;
+    public STBorderPanel createBorderPanel() {
+        return new SwingBorderPanel();
     }
 
     @Override
+    public STScrollBar createScrollBar(int direction, int min , int max) {
+        return new SwingScrollBar(direction, min, max);
+    }
+
     public void addToBorder(Object targetBorder, int position, Object comp) {
         if (targetBorder instanceof JPanel) {
             switch (position) {
@@ -142,7 +114,6 @@ public class SwingScreenImpl implements IScreen {
         }
     }
 
-    @Override
     public void addImageToLabel(Object target, Object img) {
         Object tmp = target;
         if (tmp instanceof JScrollPane) {
@@ -162,35 +133,20 @@ public class SwingScreenImpl implements IScreen {
         JOptionPane.showMessageDialog(new JFrame("X"), msg);
     }
 
-    @Override
-    public void showWindow(Object targetWindow) {
-        if (targetWindow instanceof JDialog) {
-            asWindow(targetWindow).setVisible(true);
-        }
-    }
-
-    @Override
-    public void hideWindow(Object targetWindow) {
-        if (targetWindow instanceof JDialog) {
-            asWindow(targetWindow).setVisible(false);
-        }
-    }
-
-    @Override
     public void setWindowContent(Object targetWindow, Object content) {
         if (targetWindow instanceof JDialog && content instanceof Component) {
             asWindow(targetWindow).getContentPane().add((Component) content);
         }
     }
 
-    @Override
+
     public void setWindowSize(Object targetWindow, int width, int height) {
         if (targetWindow instanceof JDialog) {
             asWindow(targetWindow).setSize(width, height);
         }
     }
 
-    @Override
+
     public void addMenu(Object targetWindow, Object targetMenu) {
         if (targetWindow instanceof JDialog && targetMenu instanceof JMenu) {
             JDialog dialog = asWindow(targetWindow);
@@ -202,28 +158,28 @@ public class SwingScreenImpl implements IScreen {
         }
     }
 
-    @Override
+
     public void setWindowTitle(Object targetWindow, String title) {
         if (targetWindow instanceof JDialog) {
             asWindow(targetWindow).setTitle(title);
         }
     }
 
-    @Override
+
     public void repaintWindow(Object targetWindow) {
         if (targetWindow instanceof JDialog) {
             asWindow(targetWindow).repaint();
         }
     }
 
-    @Override
+
     public void repaintComponent(Object targetComponent) {
         if (targetComponent instanceof Component) {
             ((Component) targetComponent).repaint();
         }
     }
 
-    @Override
+
     public String getText(Object target) {
         Object tmp = target;
         if (tmp instanceof JScrollPane) {
@@ -236,7 +192,6 @@ public class SwingScreenImpl implements IScreen {
         }
     }
 
-    @Override
     public String getSelectedText(Object target) {
         Object tmp = target;
         if (tmp instanceof JScrollPane) {
@@ -249,7 +204,7 @@ public class SwingScreenImpl implements IScreen {
         }
     }
 
-    @Override
+
     public void setText(Object target, String text) {
         Object tmp = target;
         if (tmp instanceof JScrollPane) {
@@ -260,7 +215,7 @@ public class SwingScreenImpl implements IScreen {
         }
     }
 
-    @Override
+
     public void replaceSelectedText(Object target, String text) {
         Object tmp = target;
         if (tmp instanceof JScrollPane) {

@@ -1,5 +1,8 @@
 package com.ricky9090.smallworld.display;
 
+import com.ricky9090.smallworld.obj.SmallObject;
+import com.ricky9090.smallworld.view.*;
+
 public interface IScreen {
 
     int POSITION_CENTER = 0;
@@ -8,54 +11,28 @@ public interface IScreen {
     int POSITION_BOTTOM = 3;
     int POSITION_LEFT = 4;
 
-    Object createWindow();
+    STWindow createWindow();
 
-    Object createPanel(String content);
+    STPanel createPanel(String content);
 
-    Object createButton(String text, ButtonListener listener);
+    STButton createButton(String text);
 
-    Object createTextLine();
+    STTextField createTextLine();
 
-    Object createTextArea();
+    STTextArea createTextArea();
 
-    Object createGridPanel(Object[] dataArray, int rows, int cols);
+    STGridPanel createGridPanel(int rows, int cols);
 
-    Object createListPanel(Object[] dataArray, ListListener listener);
+    STListView createListPanel(SmallObject[] dataArray);
 
-    Object createMenu(String title);
+    STMenu createMenu(String title);
 
-    void addMenuItem(Object targetMenu, String text, ButtonListener listener);
+    STMenuItem createMenuItem(String text);
 
-    Object createBorderPanel();
+    STBorderPanel createBorderPanel();
 
-    void addToBorder(Object targetBorder, int position, Object component);
-
-    void addImageToLabel(Object target, Object img);
+    STScrollBar createScrollBar(int direction, int min , int max);
 
     void showToast(String msg);
-
-    void showWindow(Object targetWindow);
-
-    void hideWindow(Object targetWindow);
-
-    void setWindowContent(Object targetWindow, Object content);
-
-    void setWindowSize(Object targetWindow, int width, int height);
-
-    void addMenu(Object targetWindow, Object targetMenu);
-
-    void setWindowTitle(Object targetWindow, String title);
-
-    void repaintWindow(Object targetWindow);
-
-    void repaintComponent(Object targetComponent);
-
-    String getText(Object target);
-
-    String getSelectedText(Object target);
-
-    void setText(Object target, String text);
-
-    void replaceSelectedText(Object target, String text);
 
 }
