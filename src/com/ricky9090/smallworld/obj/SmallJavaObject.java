@@ -1,6 +1,6 @@
 package com.ricky9090.smallworld.obj;
 
-import com.ricky9090.smallworld.view.*;
+import com.ricky9090.smallworld.view.advui.STView;
 
 public class SmallJavaObject extends SmallObject {
 
@@ -16,6 +16,10 @@ public class SmallJavaObject extends SmallObject {
     }
 
     public STView valueAsView() {
+        return (STView) value;
+    }
+
+    /*public STView valueAsView() {
         return (STView) value;
     }
 
@@ -41,6 +45,6 @@ public class SmallJavaObject extends SmallObject {
 
     public STListView valueAsListView() {
         return (STListView) value;
-    }
+    }*/
 
 }

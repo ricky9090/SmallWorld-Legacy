@@ -1,11 +1,11 @@
 package com.ricky9090.smallworld.policy;
 
-import com.ricky9090.smallworld.display.IScreen;
-import com.ricky9090.smallworld.display.SwingScreenImpl;
+import com.ricky9090.smallworld.display.IScreenService;
+import com.ricky9090.smallworld.display.service.ScreenServiceImpl;
 
 public class ScreenPolicy {
 
-    public static IScreen provideScreen() {
-        return new SwingScreenImpl();
+    public static IScreenService provideScreen() {
+        return new ScreenServiceImpl();
     }
 }

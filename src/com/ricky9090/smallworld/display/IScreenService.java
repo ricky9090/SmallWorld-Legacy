@@ -1,19 +1,15 @@
 package com.ricky9090.smallworld.display;
 
 import com.ricky9090.smallworld.obj.SmallObject;
-import com.ricky9090.smallworld.view.legacy.*;
+import com.ricky9090.smallworld.view.advui.*;
 
-public interface IScreen {
+public interface IScreenService {
 
-    int POSITION_CENTER = 0;
-    int POSITION_TOP = 1;
-    int POSITION_RIGHT = 2;
-    int POSITION_BOTTOM = 3;
-    int POSITION_LEFT = 4;
+    void bindClient(IScreenClient client);
 
     STWindow createWindow();
 
-    STPanel createPanel(String content);
+    STLabelPanel createPanel(String content);
 
     STButton createButton(String text);
 
@@ -35,4 +31,5 @@ public interface IScreen {
 
     void showToast(String msg);
 
+    void commit(STView dirtyTarget, int action);
 }

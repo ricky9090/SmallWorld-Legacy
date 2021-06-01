@@ -1,6 +1,6 @@
 package com.ricky9090.smallworld;
 
-import com.ricky9090.smallworld.display.IScreen;
+import com.ricky9090.smallworld.display.IScreenService;
 import com.ricky9090.smallworld.obj.SmallByteArray;
 import com.ricky9090.smallworld.obj.SmallInt;
 import com.ricky9090.smallworld.obj.SmallJavaObject;
@@ -8,7 +8,8 @@ import com.ricky9090.smallworld.obj.SmallObject;
 import com.ricky9090.smallworld.policy.ScreenPolicy;
 import com.ricky9090.smallworld.policy.TaskPolicy;
 import com.ricky9090.smallworld.task.ITaskManager;
-import com.ricky9090.smallworld.view.*;
+import com.ricky9090.smallworld.view.UIConst;
+import com.ricky9090.smallworld.view.advui.*;
 
 import java.io.*;
 import java.util.*;
@@ -46,7 +47,7 @@ public class SmallInterpreter {
     public SmallObject IntegerClass;
     // --- global constants end ---
 
-    IScreen screen;
+    IScreenService screen;
     ITaskManager taskManager;
 
     public SmallInterpreter() {
@@ -1026,19 +1027,23 @@ public class SmallInterpreter {
                                 break;
 
                             case 60: { // make window
-                                returnedValue = new SmallJavaObject(stack[--stackTop], screen.createWindow());
+                                STWindow window = screen.createWindow();
+                                returnedValue = new SmallJavaObject(stack[--stackTop], window);
+                                screen.commit(window, UIConst.PRIM_60_CREATE_WINDOW);
                             }
                             break;
 
                             case 61: { // show/hide text window
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject windowHolder = (SmallJavaObject) stack[--stackTop];
-                                STWindow window = windowHolder.valueAsWindow();
+                                STWindow window = (STWindow) windowHolder.value;
                                 if (returnedValue == trueObject) {
                                     window.show();
                                 } else {
                                     window.hide();
                                 }
+
+                                screen.commit(window, UIConst.PRIM_61_CHANGE_WINDOW_VISIBILITY);
                             }
                             break;
 
@@ -1047,8 +1052,10 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject windowHolder = (SmallJavaObject) returnedValue;
 
-                                STWindow window = windowHolder.valueAsWindow();
-                                window.setContent(contentHolder.valueAsView());
+                                STWindow window = (STWindow) windowHolder.value;
+                                STView content = (STView) contentHolder.value;
+
+                                window.setContent(content);
                             }
                             break;
 
@@ -1058,7 +1065,8 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
 
                                 SmallJavaObject windowHolder = (SmallJavaObject) returnedValue;
-                                STWindow window = windowHolder.valueAsWindow();
+                                STWindow window = (STWindow) windowHolder.value;
+
                                 window.setSize(low, high);
                             }
                             break;
@@ -1068,8 +1076,8 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject windowHolder = (SmallJavaObject) returnedValue;
 
-                                STWindow window = windowHolder.valueAsWindow();
-                                STMenu menu = menuHolder.valueAsMenu();
+                                STWindow window = (STWindow) windowHolder.value;
+                                STMenu menu = (STMenu) menuHolder.value;
 
                                 window.addMenu(menu);
                             }
@@ -1080,7 +1088,7 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject windowHolder = (SmallJavaObject) returnedValue;
 
-                                STWindow window = windowHolder.valueAsWindow();
+                                STWindow window = (STWindow) windowHolder.value;
 
                                 window.setTitle(title.toString());
                             }
@@ -1090,9 +1098,10 @@ public class SmallInterpreter {
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject windowHolder = (SmallJavaObject) returnedValue;
 
-                                STWindow window = windowHolder.valueAsWindow();
+                                STWindow window = (STWindow) windowHolder.value;
 
-                                window.repaint();
+
+                                screen.commit(window, UIConst.PRIM_66_REPAINT_WINDOW);
                             }
                             break;
 
@@ -1107,7 +1116,7 @@ public class SmallInterpreter {
 
                                 String text = stack[--stackTop].toString();
                                 STButton button = screen.createButton(text);
-                                button.setButtonListener(new STButton.ButtonListener() {
+                                button.setListener(new STButton.ButtonListener() {
                                     @Override
                                     public void onClick() {
                                         taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
@@ -1134,7 +1143,7 @@ public class SmallInterpreter {
 
                                 STGridPanel panel = screen.createGridPanel(low, high);
                                 for (int i = 0; i < dataHolder.data.length; i++) {
-                                    panel.addChildView((STView) ((SmallJavaObject) dataHolder.data[i]).value);
+                                    panel.addChild((STView) ((SmallJavaObject) dataHolder.data[i]).value);
                                 }
                                 returnedValue = new SmallJavaObject(stack[--stackTop], panel);
                             }
@@ -1147,7 +1156,7 @@ public class SmallInterpreter {
                                 STListView listPanel = screen.createListPanel(dataHolder.data);
                                 listPanel.setListListener(new STListView.ListListener() {
                                     @Override
-                                    public void onItemClick(int zeroBaseIndex) {
+                                    public void onListItemClick(int zeroBaseIndex, SmallObject data) {
                                         taskManager.postTask(new ActionTask(SmallInterpreter.this, action, zeroBaseIndex + 1));
                                     }
                                 });
@@ -1160,23 +1169,23 @@ public class SmallInterpreter {
                                 STBorderPanel borderPanel = screen.createBorderPanel();
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    borderPanel.addChild(IScreen.POSITION_CENTER, ((SmallJavaObject) returnedValue).valueAsView());
+                                    borderPanel.setCenter(((SmallJavaObject) returnedValue).valueAsView());
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    borderPanel.addChild(IScreen.POSITION_LEFT, ((SmallJavaObject) returnedValue).valueAsView());
+                                    borderPanel.setLeft(((SmallJavaObject) returnedValue).valueAsView());
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    borderPanel.addChild(IScreen.POSITION_RIGHT, ((SmallJavaObject) returnedValue).valueAsView());
+                                    borderPanel.setRight(((SmallJavaObject) returnedValue).valueAsView());
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    borderPanel.addChild(IScreen.POSITION_BOTTOM, ((SmallJavaObject) returnedValue).valueAsView());
+                                    borderPanel.setBottom(((SmallJavaObject) returnedValue).valueAsView());
                                 }
                                 returnedValue = stack[--stackTop];
                                 if (returnedValue != nilObject) {
-                                    borderPanel.addChild(IScreen.POSITION_TOP, ((SmallJavaObject) returnedValue).valueAsView());
+                                    borderPanel.setTop(((SmallJavaObject) returnedValue).valueAsView());
                                 }
                                 returnedValue = new SmallJavaObject(stack[--stackTop], borderPanel);
                             }
@@ -1185,23 +1194,25 @@ public class SmallInterpreter {
                             case 77: { // set image on label
                                 SmallJavaObject imgHolder = (SmallJavaObject) stack[--stackTop];
                                 SmallJavaObject panelHolder = (SmallJavaObject) stack[--stackTop];
-                                STPanel panel = panelHolder.valueAsPanel();
-                                STImageView img = imgHolder.valueAsImageView();
-                                panel.setImage(img);
+                                STLabelPanel panel = (STLabelPanel) panelHolder.value;
+                                STImageView img = (STImageView) imgHolder.value;
+
+                                // FIXME
                             }
                             break;
 
                             case 79: {// repaint
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject viewHolder = (SmallJavaObject) returnedValue;
-                                viewHolder.valueAsView().repaint();
+
+                                // FIXME
                             }
                             break;
 
                             case 80: { // content of text area
                                 SmallJavaObject textHolder = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop]; // class
-                                STTextView target = textHolder.valueAsTextView();
+                                STTextView target = (STTextView) textHolder.value;
                                 String text = target.getText();
                                 returnedValue = new SmallByteArray(returnedValue, text);
                             }
@@ -1210,7 +1221,7 @@ public class SmallInterpreter {
                             case 81: {// content of selected text area
                                 SmallJavaObject textHolder = (SmallJavaObject) stack[--stackTop];
                                 returnedValue = stack[--stackTop]; // class
-                                STTextView target = textHolder.valueAsTextView();
+                                STTextView target = (STTextView) textHolder.value;
                                 String text = target.getSelectedText();
                                 returnedValue = new SmallByteArray(returnedValue, text);
                             }
@@ -1219,14 +1230,16 @@ public class SmallInterpreter {
                             case 82: { // set text area
                                 returnedValue = stack[--stackTop];// text
                                 SmallJavaObject textHolder = (SmallJavaObject) stack[--stackTop];
-                                STTextView target = textHolder.valueAsTextView();
+                                STTextView target = (STTextView) textHolder.value;
                                 target.setText(returnedValue.toString());
+
+                                screen.commit(target, UIConst.PRIM_82_SET_VIEW_TEXT);
                             }
                             break;
 
                             case 83: { // get selected index
                                 SmallJavaObject listHolder = (SmallJavaObject) stack[--stackTop];
-                                STListView target = listHolder.valueAsListView();
+                                STListView target = (STListView) listHolder.value;
                                 returnedValue = newInteger(target.getSelectedIndex() + 1);
                             }
                             break;
@@ -1235,8 +1248,10 @@ public class SmallInterpreter {
                                 SmallObject dataHolder = stack[--stackTop];
                                 returnedValue = stack[--stackTop];
                                 SmallJavaObject listHolder = (SmallJavaObject) returnedValue;
-                                STListView target = listHolder.valueAsListView();
-                                target.setData(dataHolder.data);
+                                STListView target = (STListView) listHolder.value;
+                                target.setDataList(Arrays.asList(dataHolder.data));
+
+                                screen.commit(target, UIConst.PRIM_84_SET_LIST_DATA);
                             }
                             break;
 
@@ -1263,7 +1278,7 @@ public class SmallInterpreter {
                             case 86: { // onMouseDown b
                                 final SmallObject action = stack[--stackTop];
                                 SmallJavaObject panelHolder = (SmallJavaObject) stack[--stackTop];
-                                STPanel panel = panelHolder.valueAsPanel();
+                                STLabelPanel panel = (STLabelPanel) panelHolder.value;
                                 panel.addInputEventListener(new STView.InputEventListener() {
                                     @Override
                                     public void onInputEvent(int eventType, int x, int y) {
@@ -1278,7 +1293,7 @@ public class SmallInterpreter {
                             case 87: { // onMouseUp b
                                 final SmallObject action = stack[--stackTop];
                                 SmallJavaObject panelHolder = (SmallJavaObject) stack[--stackTop];
-                                STPanel panel = panelHolder.valueAsPanel();
+                                STLabelPanel panel = (STLabelPanel) panelHolder.value;
                                 panel.addInputEventListener(new STView.InputEventListener() {
                                     @Override
                                     public void onInputEvent(int eventType, int x, int y) {
@@ -1293,7 +1308,7 @@ public class SmallInterpreter {
                             case 88: { // onMouseMove b
                                 final SmallObject action = stack[--stackTop];
                                 SmallJavaObject panelHolder = (SmallJavaObject) stack[--stackTop];
-                                STPanel panel = panelHolder.valueAsPanel();
+                                STLabelPanel panel = (STLabelPanel) panelHolder.value;
                                 panel.addInputEventListener(new STView.InputEventListener() {
                                     @Override
                                     public void onInputEvent(int eventType, int x, int y) {
@@ -1308,8 +1323,8 @@ public class SmallInterpreter {
                             case 89: { // set selected text area
                                 returnedValue = stack[--stackTop];// text
                                 SmallJavaObject textHolder = (SmallJavaObject) stack[--stackTop];
-                                STTextView target = textHolder.valueAsTextView();
-                                target.replaceSelectedText(returnedValue.toString());
+                                STTextView target = (STTextView) textHolder.value;
+                                target.setSelectedText(returnedValue.toString());
                             }
                             break;
 
@@ -1333,7 +1348,7 @@ public class SmallInterpreter {
                                         taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
                                     }
                                 });
-                                menuHolder.valueAsMenu().addItem(menuItem);
+                                ((STMenu) menuHolder.value).addMenuItem(menuItem);
                             }
                             break;
 
@@ -1426,10 +1441,10 @@ public class SmallInterpreter {
                                 try {
                                     final SmallObject action = stack[--stackTop];
                                     SmallJavaObject windowHolder = (SmallJavaObject) stack[--stackTop];
-                                    STWindow window = windowHolder.valueAsWindow();
+                                    STWindow window = (STWindow) windowHolder.value;
                                     window.setWindowListener(new STWindow.WindowListener() {
                                         @Override
-                                        public void onWindowClose() {
+                                        public void onWindowClosing() {
                                             taskManager.postTask(new ActionTask(SmallInterpreter.this, action));
                                         }
                                     });

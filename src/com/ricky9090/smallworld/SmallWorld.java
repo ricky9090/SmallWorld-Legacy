@@ -1,5 +1,6 @@
 package com.ricky9090.smallworld;
 
+import com.ricky9090.smallworld.display.client.SwingClientImpl;
 import com.ricky9090.smallworld.obj.SmallByteArray;
 import com.ricky9090.smallworld.obj.SmallObject;
 
@@ -20,6 +21,8 @@ public class SmallWorld {
         world = new SmallWorld(args);
     }
 
+    public static final Object RENDER_LOCK = new Object();
+
     private static SmallWorld world;
     private SmallInterpreter theInterpreter = new SmallInterpreter();
     public boolean running = true;
@@ -32,10 +35,11 @@ public class SmallWorld {
             theInterpreter = new SmallInterpreter();
             done = theInterpreter.loadImageFromInputStream(input);
             input.close();
+            SwingClientImpl swingClient = new SwingClientImpl(theInterpreter.screen);
+            swingClient.start();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(new JFrame("X"), "Exception: " + e.toString());
         }
-
 
         if (done) {
             doIt("SmallWorld startUp");
@@ -55,9 +59,9 @@ public class SmallWorld {
             if ("doIt".equals(aMethod.data[0].toString()))
                 doItMeth = aMethod;
         }
-        if (doItMeth == null)
+        if (doItMeth == null) {
             System.out.println("can't find do it!!");
-        else {
+        } else {
             SmallByteArray rec = new SmallByteArray(StringClass, task);
             SmallObject args = new SmallObject(theInterpreter.ArrayClass, 1);
             args.data[0] = rec;

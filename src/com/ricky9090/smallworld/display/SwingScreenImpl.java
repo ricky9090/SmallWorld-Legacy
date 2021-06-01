@@ -1,17 +1,12 @@
 package com.ricky9090.smallworld.display;
 
-import com.ricky9090.smallworld.obj.SmallJavaObject;
 import com.ricky9090.smallworld.obj.SmallObject;
-import com.ricky9090.smallworld.view.*;
-import com.ricky9090.smallworld.view.impl.swing.*;
+import com.ricky9090.smallworld.view.legacy.*;
+import com.ricky9090.smallworld.view.legacy.swing.*;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 public class SwingScreenImpl implements IScreen {
 
