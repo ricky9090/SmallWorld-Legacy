@@ -120,6 +120,10 @@ public class ScreenServiceImpl implements IScreenService {
                     mClient.commit(dirtyTarget, action);
                     System.out.println("Screen Service commit " + action);
                     SmallWorld.RENDER_LOCK.notifyAll();
+                } else {
+                    mClient.commit(dirtyTarget, action);
+                    System.out.println("Screen Service commit " + action);
+                    SmallWorld.RENDER_LOCK.notifyAll();
                 }
             } catch (Exception e) {
                 e.printStackTrace();

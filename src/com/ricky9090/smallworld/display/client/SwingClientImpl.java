@@ -8,16 +8,17 @@ import com.ricky9090.smallworld.view.UIConst;
 import com.ricky9090.smallworld.view.advui.*;
 
 import javax.swing.*;
-import javax.swing.event.*;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 
 public class SwingClientImpl extends Thread implements IScreenClient {
 
@@ -125,6 +126,32 @@ public class SwingClientImpl extends Thread implements IScreenClient {
                         ((JTextField) component).setText(targetTextView.getText());
                     } else if (component instanceof JTextArea) {
                         ((JTextArea) component).setText(targetTextView.getText());
+                    }
+
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } else if (dirtyAction == UIConst.PRIM_89_SET_SELECTED_TEXT) {
+            String targetTag = dirtyTarget.getId() + "";
+            WidgetPair targetPair = findWidgetPairInWindowMap(targetTag);
+
+            if (targetPair != null) {
+                try {
+                    Component component = targetPair.swingWidget;
+                    if (component == null) {
+                        return;
+                    }
+                    if (component instanceof JScrollPane) {
+                        component = ((JScrollPane) component).getViewport().getView();
+                    }
+                    STTextView targetTextView = (STTextView) targetPair.stWidget;
+
+                    if (component instanceof JTextField) {
+                        ((JTextField) component).replaceSelection(targetTextView.getSelectedText());
+                    } else if (component instanceof JTextArea) {
+                        ((JTextArea) component).replaceSelection(targetTextView.getSelectedText());
                     }
 
 

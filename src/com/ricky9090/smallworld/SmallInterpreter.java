@@ -1325,6 +1325,8 @@ public class SmallInterpreter {
                                 SmallJavaObject textHolder = (SmallJavaObject) stack[--stackTop];
                                 STTextView target = (STTextView) textHolder.value;
                                 target.setSelectedText(returnedValue.toString());
+
+                                screen.commit(target, UIConst.PRIM_89_SET_SELECTED_TEXT);
                             }
                             break;
 
