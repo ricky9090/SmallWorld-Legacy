@@ -1,0 +1,137 @@
+EVAL Class addNewClass: ( nil subclass: 'Object' variables: 'nil' classVariables: '')
+METHOD Object
+= arg
+	^ self == arg
+
+!
+METHOD Object
+== arg
+	^ <1 self arg>
+
+!
+METHOD Object
+class
+	^ <2 self>
+
+!
+METHOD Object
+doesNotUnderstand: anArray  | w t txt |
+   t <- Pane textArea. 
+   txt <- ((anArray at: 2) at: 1) printString.
+   txt <- txt + ' does not understand "' + (anArray at: 1) printString + '"'.
+    t setText: (txt + Char newline asString + Context current backtrace).
+   w <- Window new title: 'Does Not Understand'. w width: 300 height: 300.
+   w setPane: (Pane north: nil center: t south: (Pane title: 'close' action: [w close])).
+   w show.  Object halt
+!
+METHOD Object
+edit  | w m p |
+   w <- Window new title: 'Object editor: ' + self printString.
+   w width: 300 height: 200.
+   p <- Pane list: self class instanceVariables 
+action: [:i | (Object in: self at: i) edit: [:nv | Object in: self at: i put: nv] ].
+   w setPane: p. m <- Menu new: 'information'. 
+   m on: 'printString' do: [ self printString inspect ].
+   m on: 'class' do: [ self class inspect ].
+   w addMenu: m.
+   w show
+!
+METHOD Object
+edit: cb   | w m p |
+   w <- Window new title: 'Object editor: ' + self printString.
+   w width: 300 height: 200.
+   p <- Pane list: self class instanceVariables action: 
+      [ :i | (Object in: self at: i) edit: [:nv | Object in: self at: i put: nv]].
+   w setPane: p.
+   m <- Menu new: 'information'. 
+   m on: 'printString' do: [ self printString inspect ].
+   m on: 'class' do: [ self class inspect ].
+   m on: 'eval' do: [ Window eval: cb ].
+   m on: 'save' do: [ cb value: self ].
+   w addMenu: m.
+   w show
+!
+METHOD Object
+error: str  | w t |
+   t <- Pane textArea. 
+   t setText: (str + Char newline asString + Context current backtrace).
+   w <- Window new title: 'Error'. w width: 300 height: 300.
+   w setPane: (Pane north: nil center: t south: (Pane title: 'close' action: [w close])).
+   w show.  Object halt
+!
+METHOD Object
+inspect   | w m |
+   w <- Window new title: 'Object inspector: ' + self printString.
+   w width: 300 height: 200.
+   w setPane: (Pane list: self class instanceVariables action: [:i | (Object in: self at: i) inspect ]).
+   m <- Menu new: 'information'. 
+   m on: 'printString' do: [ self printString inspect ].
+   m on: 'class' do: [ self class inspect ].
+   w addMenu: m.
+   w show
+!
+METHOD Object
+isKindOf: aClass	| clas |
+	clas <- self class.
+	[ clas notNil ] whileTrue:
+		[ clas == aClass ifTrue: [ ^ true ].
+		  clas <- clas superclass ].
+	^ false
+
+!
+METHOD Object
+isMemberOf: aClass
+	^ self class == aClass
+
+!
+METHOD Object
+isNil
+	^ false
+
+!
+METHOD Object
+notNil
+	^ true
+
+!
+METHOD Object
+printString
+	^ self class printString
+
+!
+METHOD Object
+respondsTo: aMessage
+	^ self class allMethods includesTest: [:m | m name = aMessage]
+
+!
+METHOD Object
+~= arg
+	^ (self = arg) not
+
+!
+META Object
+halt  " primitive thread death "
+   <34>
+!
+META Object
+in: v add: nv "increase object with value "
+  ^ <32 nv v>
+!
+META Object
+in: o at: i  | r |
+   r <- <30 o i>. <18 r>. ^ r
+!
+META Object
+in: o at: i put: v
+	^ <5 v o i>
+
+!
+META Object
+millisecondsToRun: timedBlock 
+	"Answer the number of milliseconds timedBlock takes to return its value."
+
+	| initialMilliseconds |
+	initialMilliseconds <- <119>.
+	timedBlock value.
+	^ <119> - initialMilliseconds
+!

@@ -1,0 +1,11 @@
+EVAL Class addNewClass: ( Object subclass: 'SmallWorld' variables: '' classVariables: '')
+META SmallWorld
+quit 
+  (Window question: 'Quit without saving?') ifTrue: [<117 self>]
+!
+META SmallWorld
+startUp
+   "This is called by the virtual machine when it starts"
+   Transcript open.
+   Transcript show: '(System started)'.
+!

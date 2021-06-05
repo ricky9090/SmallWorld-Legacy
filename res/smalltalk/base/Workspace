@@ -1,0 +1,79 @@
+EVAL Class addNewClass: ( Object subclass: 'Workspace' variables: 'window textPane workspaceVariables ' classVariables: '')
+METHOD Workspace
+doIt
+   | s a as m c o result|
+   
+   "Find assertions"
+   s <- textPane getSelectedText break.
+   a <- List new.
+   1 to: s size do: [ :i |
+	(s at: i) = '<-' ifTrue: [a add: (s at: i - 1)]].	
+ 
+   "Merge with existing state"
+   a do: [:e |
+	(workspaceVariables includesTest: [:x | (x at: 1) = e]) ifFalse: [
+		workspaceVariables add: #(e nil)]].
+ 
+   "Create var string"
+    as <- ''.  
+    workspaceVariables do: [ :e |
+	as <- as + (e at: 1) + ' '].
+  
+    c <- Object subclass: 'WorkspaceTemp' variables: as classVariables: ''.
+    c compileMethod: 'w ^ [' + textPane getSelectedText + '] value'.
+    o <- c new.  
+
+    1 to: workspaceVariables size do: [ :e |
+ 	Object in: o at: e put: ((workspaceVariables at: e) at: 2)].
+
+    result <- o w.  
+
+    1 to: workspaceVariables size do: [ :e |
+ 	(workspaceVariables at: e) at: 2 put: (Object in: o at: e)].
+
+    ^ result
+!
+METHOD Workspace
+inspectIt
+   
+   self doIt inspect
+!
+METHOD Workspace
+open
+   | d p i |
+   workspaceVariables <- List new.
+   textPane <- Pane textArea.
+   textPane setText: ''.
+   window <- Window new title: 'Workspace'. 
+   window width: 400 height: 300.
+ 
+   d <- Pane title: 'do it' action: [self doIt].
+   p <- Pane title: 'print it' action: [self printIt].
+   i <- Pane title: 'inspect it' action: [self inspectIt].
+
+   window setPane: 
+	(Pane north: 
+		(Pane west: d east: 
+			(Pane west: i east: 
+				(Pane west: p east: nil)))  center: textPane south: nil).
+   window show.
+!
+METHOD Workspace
+print: thething
+   | r |
+    r <- thething printString.
+
+    <89 textPane r>
+!
+METHOD Workspace
+printIt
+   | r |
+    r <- textPane getSelectedText + ' ' + self doIt printString.
+
+    <89 textPane r>
+!
+META Workspace
+open
+
+^ self new open
+!

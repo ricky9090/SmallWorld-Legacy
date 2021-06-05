@@ -1,0 +1,61 @@
+EVAL Class addNewClass: ( Object subclass: 'Transcript' variables: 'pane window contents ' classVariables: 'pane window contents ')
+META Transcript
+clear
+
+	contents <- ''.
+            pane setText: contents.
+            window repaint.
+!
+META Transcript
+contents
+
+  ^ contents.
+!
+META Transcript
+open
+   "This is the main window for SmallWorld"
+   | m |
+
+  contents <- 'Welcome to SmallWorld 2015.1
+
+SmallWorld is a subset of Smalltalk-80 
+running on the JVM.
+
+You are looking at the Transcript
+which is the equivalent of 
+System.out
+
+Please choose an option from the
+Tools menu to continue.
+'.
+
+   pane <- Pane textArea.
+   pane setText: self contents.
+   window <- Window new title: 'SmallWorld'. 
+   window width: 400 height: 300.
+   window setPane: pane. 
+
+   m <- Menu new: 'SmallWorld'.
+   m on: 'Save' do: [File saveImage].
+   m on: 'Export image' do: [File exportImage: 'image'].
+   m on: 'Quit SmallWorld' do: [SmallWorld quit].
+   window addMenu: m.
+
+   m <- Menu new: 'Tools'.
+   m on: 'Class Browser' do: [ClassBrowser open].
+   m on: 'Workspace' do: [Workspace open].
+   window addMenu: m.
+
+   window onClose: [SmallWorld quit]. 
+   window show.
+!
+META Transcript
+show: aString
+
+    contents <- self contents printString + '' + aString + '
+'.
+    pane setText: contents.
+    window repaint.
+
+
+!
