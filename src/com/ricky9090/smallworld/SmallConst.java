@@ -11,6 +11,7 @@ public class SmallConst {
         public static final int INDEX_OBJ_TYPE = 1;
         public static final int INDEX_OBJ_CLASS = 2;
         public static final int INDEX_OBJ_DATA_LENGTH = 3;
+        public static final int INDEX_OBJ_DATA = 4;
     }
 
 

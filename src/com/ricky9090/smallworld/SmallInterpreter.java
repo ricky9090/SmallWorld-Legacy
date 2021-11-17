@@ -71,40 +71,44 @@ public class SmallInterpreter {
                     screen.showToast(msg);
                 }
                 while (true) {
-                    int si = r.readInt();
-                    int[] qw = new int[si];
-                    qw[SmallConst.OBJ.INDEX_OBJ_LENGTH] = si;
-                    qw[SmallConst.OBJ.INDEX_OBJ_TYPE] = r.readInt();
-
-                    int objLen = qw[SmallConst.OBJ.INDEX_OBJ_LENGTH];
-                    int objType = qw[SmallConst.OBJ.INDEX_OBJ_TYPE];
+                    /*
+                     * |0         |1       |2        |3              |4
+                     * +----------+--------+---------+---------------+------------+
+                     * |obj length|obj type|obj class|obj data length|obj data ...|
+                     * +----------+--------+---------+---------------+------------+
+                     */
+                    int objLength = r.readInt();
+                    int objType = r.readInt();
+                    int objClass = r.readInt();
+                    int objDataLength = r.readInt();
+                    int[] objDataArray = new int[objLength];
+                    objDataArray[SmallConst.OBJ.INDEX_OBJ_LENGTH] = objLength;
+                    objDataArray[SmallConst.OBJ.INDEX_OBJ_TYPE] = objType;
+                    objDataArray[SmallConst.OBJ.INDEX_OBJ_CLASS] = objClass;
+                    objDataArray[SmallConst.OBJ.INDEX_OBJ_DATA_LENGTH] = objDataLength;
 
                     if (objType == SmallConst.OBJ.TYPE_SMALL_INT) {
-                        for (int i = 2; i < objLen; i++) {
-                            qw[i] = r.readInt();
+                        for (int i = SmallConst.OBJ.INDEX_OBJ_DATA; i < objLength; i++) {
+                            objDataArray[i] = r.readInt();
                         }
                         objectList.add(new SmallInt());
                     } else if (objType == SmallConst.OBJ.TYPE_SMALL_OBJECT) {
-                        for (int i = 2; i < objLen; i++) {
-                            qw[i] = r.readInt();
+                        for (int i = SmallConst.OBJ.INDEX_OBJ_DATA; i < objLength; i++) {
+                            objDataArray[i] = r.readInt();
                         }
                         objectList.add(new SmallObject());
                     } else if (objType == SmallConst.OBJ.TYPE_SMALL_BYTE_ARRAY) {
-                        qw[SmallConst.OBJ.INDEX_OBJ_CLASS] = r.readInt(); // class
-                        qw[SmallConst.OBJ.INDEX_OBJ_DATA_LENGTH] = r.readInt(); // datasize
-
-                        int objDataLen = qw[SmallConst.OBJ.INDEX_OBJ_DATA_LENGTH];
-
-                        for (int i = 4; i < 4 + objDataLen; i++) {
-                            qw[i] = r.readInt();
+                        int rawByteIndex = SmallConst.OBJ.INDEX_OBJ_DATA + objDataLength;
+                        for (int i = SmallConst.OBJ.INDEX_OBJ_DATA; i < rawByteIndex; i++) {
+                            objDataArray[i] = r.readInt();
                         }
-                        for (int i = 4 + objDataLen; i < objLen; i++) {
-                            qw[i] = r.readByte();
+                        for (int i = rawByteIndex; i < objLength; i++) {
+                            objDataArray[i] = r.readByte();
                         }
                         objectList.add(new SmallByteArray());
                     }
 
-                    objectDataList.add(qw);
+                    objectDataList.add(objDataArray);
                 }
             } catch (IOException e) {
                 if (e instanceof EOFException) {
@@ -137,9 +141,10 @@ public class SmallInterpreter {
 
                 // For SmallByteArray
                 if (objType == SmallConst.OBJ.TYPE_SMALL_BYTE_ARRAY) {
-                    byte[] byteArrayValues = new byte[objLength - 4 - objDataLength];
-                    for (int i = 4 + objDataLength; i < objLength; i++) {
-                        byteArrayValues[i - 4 - objDataLength] = (byte) rawData[i];
+                    int rawByteIndex = SmallConst.OBJ.INDEX_OBJ_DATA + objDataLength;
+                    byte[] byteArrayValues = new byte[objLength - rawByteIndex];
+                    for (int i = rawByteIndex; i < objLength; i++) {
+                        byteArrayValues[i - rawByteIndex] = (byte) rawData[i];
                     }
 
                     ((SmallByteArray) target).values = byteArrayValues;
@@ -201,7 +206,7 @@ public class SmallInterpreter {
         set.add(IntegerClass);
         set.addAll(Arrays.asList(smallIntCache));
         while (true) {
-            java.util.List<SmallObject> newList = new ArrayList<>();
+            List<SmallObject> newList = new ArrayList<>();
             for (SmallObject o : set) {
                 newList.add(o.objClass);
                 newList.addAll(Arrays.asList(o.data));
@@ -398,9 +403,9 @@ public class SmallInterpreter {
 
             innerLoop:
             while (true) {
-                int high = code[bytePointer++];
-                int low = high & 0x0F;
-                high = (high >>= 4) & 0x0F;
+                int nextByteCode = code[bytePointer++];
+                int low = nextByteCode & 0x0F;
+                int high = (nextByteCode >>> 4) & 0x0F;
                 if (high == 0) {
                     high = low;
                     // convert to positive int
